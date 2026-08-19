@@ -1,4 +1,4 @@
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, ShoppingCart, Clock, CheckCircle, XCircle, PackageCheck } from 'lucide-react';
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
 export const C = {
@@ -24,6 +24,15 @@ export const LIVE_STATES = {
   sobremesa: { label: 'Sobremesa', color: '#6b8e7b', dot: '#4d6b5a' },
   esperando_cuenta: { label: 'Cuenta', color: '#9b59b6', dot: '#7d3f9c' },
   para_limpiar: { label: 'A limpiar', color: '#e67e22', dot: '#c05e0a' },
+};
+
+// ─── Estados de pedidos ──────────────────────────────────────────────────────
+export const PEDIDO_ESTADOS = {
+  pendiente:      { label: 'Pendiente',       color: C.soon,     icon: Clock },
+  en_preparacion: { label: 'En preparación',  color: C.terraSoft, icon: ShoppingCart },
+  listo:          { label: 'Listo',           color: C.free,     icon: CheckCircle },
+  entregado:      { label: 'Entregado',       color: C.forest,   icon: PackageCheck },
+  cancelado:      { label: 'Cancelado',       color: '#b0b0b0',  icon: XCircle },
 };
 
 // ─── Servicios ───────────────────────────────────────────────────────────────
@@ -178,6 +187,21 @@ export const serviceFromTime = (time, fallback) => {
   return fallback;
 };
 
+// Hora sugerida para pedidos/reservas: si la hora actual está dentro de la
+// atención se usa tal cual; si no, salta al inicio del próximo turno.
+export const defaultServiceTime = () => {
+  const d = new Date();
+  const now = d.getHours() * 60 + d.getMinutes();
+  const mStart = t2m(SERVICES.mediodia.start, 'mediodia');
+  const mEnd = t2m(SERVICES.mediodia.end, 'mediodia');
+  const cStart = t2m(SERVICES.cena.start, 'cena');
+  const cEnd = t2m(SERVICES.cena.end, 'cena');
+  const inLunch = now >= mStart && now <= mEnd;
+  const inDinner = now >= cStart || (now + 24 * 60 >= cStart && now + 24 * 60 <= cEnd);
+  if (inLunch || inDinner) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return now < mStart ? SERVICES.mediodia.start : SERVICES.cena.start;
+};
+
 // ─── Utilidad N8N ────────────────────────────────────────────────────────────
 const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || '';
 export const notificarN8N = (datos) => {
@@ -207,7 +231,9 @@ export const computeStateDurations = (stateLog) => {
     const dur = Math.round((toMs(sorted[i + 1].at) - toMs(sorted[i].at)) / 60000);
     result.push({ state: sorted[i].state, durationMin: dur });
   }
-  return result.filter(d => d.durationMin >= 0 && d.durationMin <= 600);
+  // Estados administrativos de cierre no aportan tiempo real de servicio
+  const EXCLUDED = new Set(['finalizado', 'liberada', 'liberado']);
+  return result.filter(d => !EXCLUDED.has(d.state) && d.durationMin >= 0 && d.durationMin <= 600);
 };
 
 // ─── Analytics helpers ───────────────────────────────────────────────────────

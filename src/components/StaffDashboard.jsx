@@ -583,7 +583,7 @@ export default function StaffDashboard({ onLogout }) {
         {[
           ['reservas', 'Mozos', `${sortedRes.length} items`],
           ['plano', 'Plano', 'Arrastrable'],
-          ['pedidos', 'Pedidos', 'Bot'],
+          ['pedidos', 'Pedidos', 'Bot y web'],
         ].map(([key, label, sub]) => (
           <button key={key} onClick={() => setMainTab(key)} style={{
             flex: 1, padding: '10px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
@@ -791,7 +791,7 @@ export default function StaffDashboard({ onLogout }) {
         />
       )}
 
-      {/* ── PEDIDOS DEL BOT ── */}
+      {/* ── PEDIDOS ── */}
       {mainTab === 'pedidos' && (
         <PedidosPanel date={date} service={service} />
       )}

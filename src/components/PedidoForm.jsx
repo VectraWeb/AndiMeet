@@ -1,16 +1,11 @@
-// ResForm.jsx — Formulario de reserva independiente para clientes
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Check, AlertCircle, Calendar, Clock, ArrowLeft } from 'lucide-react';
-import {
-  doc, onSnapshot, setDoc, serverTimestamp,
-} from 'firebase/firestore';
+// PedidoForm.jsx — Formulario de pedido para clientes (para llevar / a domicilio)
+import { useState, useRef, useCallback } from 'react';
+import { Check, AlertCircle, ArrowLeft, ShoppingBag, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { C, SERVICES, DEFAULT_CONFIG, configToArray, serviceFromTime, defaultServiceTime, todayISO } from '../utils';
+import { C, todayISO } from '../utils';
 import { Field } from './ui';
-
-// ─── Firestore helpers ───────────────────────────────────────────────────────
-const resDocRef = (id) => doc(db, 'reservations', id);
-const cfgRef = () => doc(db, 'config', 'restaurant');
+import CartaVirtual from './CartaVirtual';
 
 // ─── Estilos ─────────────────────────────────────────────────────────────────
 const inp = {
@@ -22,11 +17,10 @@ const inp = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ResForm — Formulario de reserva para clientes
+// PedidoForm — Formulario de pedido para clientes
+// El pedido es del día; el horario lo confirma el restaurante.
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function ResForm({ onStaffAccess, onBack }) {
-  const [, setConfig] = useState(DEFAULT_CONFIG);
-  const [date, setDate] = useState(todayISO());
+export default function PedidoForm({ onBack, onStaffAccess }) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -48,35 +42,15 @@ export default function ResForm({ onStaffAccess, onBack }) {
 
   const [form, setForm] = useState({
     customerName: '',
-    partySize: 2,
-    time: defaultServiceTime(),
-    notes: '',
+    details: '',
   });
+  const [showCarta, setShowCarta] = useState(false);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  // ── Suscripción a config ─────────────────────────────────────────────────
-  useEffect(() => {
-    const unsub = onSnapshot(cfgRef(), (snap) => {
-      if (snap.exists()) setConfig(configToArray(snap.data()));
-    });
-    return unsub;
-  }, []);
-
-  // Servicio (Mediodía/Cena) derivado de la hora elegida
-  const service = serviceFromTime(form.time);
-  const timeOutOfRange = form.time && !service;
-
-  // Cierre semanal: los martes no se atiende
-  const closedTuesday = new Date(date + 'T12:00:00').getDay() === 2;
-
   // ── Validación ───────────────────────────────────────────────────────────
   const valid = form.customerName.trim().length >= 2
-    && form.time
-    && service
-    && form.partySize > 0
-    && date
-    && !closedTuesday
+    && form.details.trim().length >= 3
     && !submitting;
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -85,24 +59,25 @@ export default function ResForm({ onStaffAccess, onBack }) {
     setSubmitting(true);
     setError('');
 
-    const id = `r${Date.now()}`;
+    const id = `p${Date.now()}`;
 
     try {
-      // GUARDADO SIMPLE: Sin búsqueda de mesas, sin transacciones.
-      // La reserva nace estrictamente como 'pendiente' y sin mesa asignada.
-      await setDoc(resDocRef(id), {
+      // GUARDADO SIMPLE: pedido del día, sin mesa ni horario fijado.
+      // 'service' se guarda vacío (la regla de Firestore exige el campo,
+      // pero el horario lo confirma el restaurante).
+      // Aparecerá en el panel Pedidos del staff (source: 'cliente_web').
+      await setDoc(doc(db, 'reservations', id), {
         id,
         customerName: form.customerName.trim(),
-        partySize: form.partySize,
-        staffId: null,
-        staffName: '',
-        time: form.time,
-        duration: SERVICES[service].defaultDuration,
-        service,
-        notes: form.notes,
+        service: '',
+        time: '',
+        date: todayISO(),
+        notes: form.details.trim(),
+        tipo: 'pedido',
+        source: 'cliente_web',
+        pedidoEstado: 'pendiente',
         mesa_id: null,
         estado: 'pendiente',
-        date,
         updatedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
       });
@@ -110,17 +85,17 @@ export default function ResForm({ onStaffAccess, onBack }) {
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
-        setForm({ customerName: '', partySize: 2, time: defaultServiceTime(), notes: '' });
+        setForm({ customerName: '', details: '' });
       }, 3000);
     } catch (e) {
-      console.error('Error al crear la reserva:', e);
-      setError('Error al crear la reserva. Intente de nuevo.');
+      console.error('Error al crear el pedido:', e);
+      setError('Error al enviar el pedido. Intente de nuevo.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ── Si ya fue creada exitosamente ────────────────────────────────────────
+  // ── Si ya fue creado exitosamente ────────────────────────────────────────
   if (success) {
     return (
       <div style={{ padding: '60px 24px', textAlign: 'center' }}>
@@ -128,13 +103,13 @@ export default function ResForm({ onStaffAccess, onBack }) {
           <Check size={32} color="#fff" />
         </div>
         <h2 style={{ fontFamily: '"Fraunces", serif', fontSize: '24px', fontStyle: 'italic', fontWeight: 600, color: C.forest, margin: '0 0 8px' }}>
-          Reserva confirmada
+          Pedido enviado
         </h2>
         <p style={{ fontSize: '14px', color: C.muted, margin: 0 }}>
-          {date} · {form.time} · {service === 'mediodia' ? 'Mediodía' : 'Cena'}
+          {todayISO()}
         </p>
         <p style={{ fontSize: '14px', color: C.muted, margin: '4px 0 0' }}>
-          Te esperamos en <strong>Andi</strong>
+          Te confirmamos el horario
         </p>
       </div>
     );
@@ -160,7 +135,7 @@ export default function ResForm({ onStaffAccess, onBack }) {
           Andi
         </h1>
         <p style={{ fontSize: '12px', color: C.muted, margin: '6px 0 0', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-          Reservá tu mesa
+          Hacé tu pedido
         </p>
       </div>
 
@@ -176,58 +151,34 @@ export default function ResForm({ onStaffAccess, onBack }) {
           />
         </Field>
 
-        <Field label="Fecha">
-          <input
-            type="date"
-            value={date}
-            min={todayISO()}
-            onChange={e => setDate(e.target.value)}
-            style={inp}
-          />
-          {closedTuesday && (
-            <div style={{
-              marginTop: '8px', fontSize: '13px', padding: '10px 14px',
-              background: '#fdf6e3', border: `1px solid ${C.soon}`, borderRadius: '12px',
-              color: '#6b5a00', lineHeight: '1.4',
-            }}>
-              Cerrado los martes. Elegí otro día para reservar.
-            </div>
-          )}
-        </Field>
+        {/* Carta virtual */}
+        <button onClick={() => setShowCarta(s => !s)} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', padding: '14px 16px',
+          background: C.white, border: `1.5px solid ${C.creamDeep}`, borderRadius: '14px',
+          cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+          transition: 'border-color 0.2s ease',
+        }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ width: '34px', height: '34px', borderRadius: '10px', background: `${C.forest}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <BookOpen size={17} color={C.forest} />
+            </span>
+            <span>
+              <span style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: C.espresso }}>Ver nuestra carta</span>
+              <span style={{ display: 'block', fontSize: '11px', color: C.muted, marginTop: '1px' }}>Consultá precios y productos</span>
+            </span>
+          </span>
+          {showCarta ? <ChevronUp size={18} color={C.muted} /> : <ChevronDown size={18} color={C.muted} />}
+        </button>
 
-        <Field label="Comensales">
-          <select value={form.partySize} onChange={e => set('partySize', parseInt(e.target.value))} style={inp}>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
-              <option key={n} value={n}>{n} {n === 1 ? 'persona' : 'personas'}</option>
-            ))}
-          </select>
-        </Field>
+        {showCarta && <CartaVirtual />}
 
-        <Field label="Horario">
-          <input type="time" value={form.time}
-            onChange={e => set('time', e.target.value)}
-            style={inp} />
-        </Field>
-
-        {service && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '10px 14px', background: '#fdf6e3', border: `1px solid ${C.soon}`, borderRadius: '12px', color: '#6b5a00', lineHeight: '1.4' }}>
-            {service === 'mediodia' ? <Calendar size={15} /> : <Clock size={15} />}
-            <span><strong>{service === 'mediodia' ? 'Mediodía' : 'Cena'}</strong> · de {SERVICES[service].start} a {SERVICES[service].end}</span>
-          </div>
-        )}
-
-        {timeOutOfRange && (
-          <div style={{ padding: '10px 14px', background: '#fdf6e3', border: `1px solid ${C.soon}`, borderRadius: '12px', fontSize: '13px', color: '#6b5a00', lineHeight: '1.4' }}>
-            Ese horario está fuera de nuestra atención: Mediodía de {SERVICES.mediodia.start} a {SERVICES.mediodia.end} y Cena de {SERVICES.cena.start} a {SERVICES.cena.end}.
-          </div>
-        )}
-
-        <Field label="Notas (opcional)">
+        <Field label="Detalle del pedido">
           <textarea
-            value={form.notes}
-            onChange={e => set('notes', e.target.value)}
-            placeholder="Alergias, pedidos especiales..."
-            rows={2}
+            value={form.details}
+            onChange={e => set('details', e.target.value)}
+            placeholder="¿Qué querés? Ej: 2 cafés con leche, 1 medialunas, 1 tostado..."
+            rows={3}
             style={{ ...inp, resize: 'vertical' }}
           />
         </Field>
@@ -248,9 +199,17 @@ export default function ResForm({ onStaffAccess, onBack }) {
           fontSize: '16px', fontWeight: 600,
           fontFamily: 'inherit',
           marginTop: '4px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
         }}>
-          {submitting ? 'Reservando...' : 'Reservar mesa'}
+          <ShoppingBag size={18} />
+          {submitting ? 'Enviando pedido...' : 'Enviar pedido'}
         </button>
+
+        {!valid && !submitting && (
+          <div style={{ padding: '10px 14px', background: '#fef2f2', border: `1px solid ${C.terraSoft}`, borderRadius: '12px', fontSize: '13px', color: '#991b1b', lineHeight: '1.4' }}>
+            Completá tu nombre y el detalle del pedido para habilitar el envío.
+          </div>
+        )}
       </div>
     </div>
   );

@@ -223,7 +223,6 @@ const SalonFloor = React.memo(function SalonFloor({
   const dragRef = useRef(null);
   const sectorDragRef = useRef(null);
   const lastFocusKeyRef = useRef(0);
-  const focusTimerRef = useRef(null);
 
   const [fitScale, setFitScale] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -282,53 +281,15 @@ const SalonFloor = React.memo(function SalonFloor({
     setOffset({ x: 0, y: 0 });
   }, []);
 
-  // Focus a una mesa desde la lista de reservas: zoom + pan hacia ella.
-  // Se re-ejecuta SOLO cuando cambia la key (nuevo click), no en re-renders.
+  // Focus a una mesa desde la lista de reservas: solo resalta la mesa
+  // (contorno dorado + banner) — sin zoom, sin pan.
   useLayoutEffect(() => {
     if (!focusRequest) return;
     if (lastFocusKeyRef.current === focusRequest.key) return;
-    lastFocusKeyRef.current = focusRequest.key;
     const t = tables.find(tb => tb.id === focusRequest.tableId);
     const p = positions[focusRequest.tableId];
     if (!t || !p) return;
-    const d = TABLE_DIMS[t.shape] || TABLE_DIMS.round;
-    const cx = p.x + d.w / 2;
-    const cy = p.y + d.h / 2;
-    const targetZoom = 1.8;
-    const el = containerRef.current;
-    const w = el?.clientWidth || 600;
-    const h = el?.clientHeight || 500;
-    const s = fitScale * targetZoom;
-    let nx, ny;
-    if (isMobile) {
-      // Canvas rotado 90° alrededor de su centro (transformOrigin center).
-      // Punto (cx,cy) del canvas → pantalla:
-      //   screenX = w/2 + offset.x − s·(cy − H/2)
-      //   screenY = h/2 + offset.y + s·(cx − W/2)
-      // → offset para centrar la mesa:
-      nx = (cy - CANVAS_H / 2) * s;
-      ny = (CANVAS_W / 2 - cx) * s;
-    } else {
-      nx = w / 2 - cx * s;
-      ny = h / 2 - cy * s;
-    }
-    // Clamp suave: permite desplazar hasta el borde del canvas visual
-    // (en mobile el canvas rota: ancho visual = CANVAS_H·s, alto = CANVAS_W·s)
-    const visW = (isMobile ? CANVAS_H : CANVAS_W) * s;
-    const visH = (isMobile ? CANVAS_W : CANVAS_H) * s;
-    const limX = Math.max(0, (visW - w) / 2 + visW * 0.1);
-    const limY = Math.max(0, (visH - h) / 2 + visH * 0.1);
-    nx = Math.max(-limX, Math.min(limX, nx));
-    ny = Math.max(-limY, Math.min(limY, ny));
-    setOffset({ x: nx, y: ny });
-    setZoom(targetZoom);
-    // Volver al plano general a los 5 segundos (evita quedar "atrapado" en zoom)
-    if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
-    focusTimerRef.current = setTimeout(() => {
-      resetView();
-      focusTimerRef.current = null;
-    }, 5000);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    lastFocusKeyRef.current = focusRequest.key;
   }, [focusRequest, tables, positions]);
 
   // Wheel zoom (PC) — listener no-pasivo para poder cancelar el scroll
@@ -347,13 +308,6 @@ const SalonFloor = React.memo(function SalonFloor({
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, [isEditing, zoomAt]);
-
-  // Limpiar el timer de auto-reset al desmontar
-  useEffect(() => {
-    return () => {
-      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     if (tables.length > 0 && Object.keys(positions).length === 0) {

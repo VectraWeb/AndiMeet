@@ -321,7 +321,7 @@ export default function PedidosPanel({ date, service }) {
   ));
 
   return (
-    <div className="fab-safe" style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <AccordionSection title="Todos" count={allPedidos.length} expanded={expandedSection === 'todos'} onToggle={() => toggleSection('todos')} accentColor={C.forest}>
         {renderPedidos(allPedidos)}
       </AccordionSection>

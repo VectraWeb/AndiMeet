@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import {
   Wine, UtensilsCrossed, Sandwich, Croissant, Droplets, Drumstick,
   Fish, Salad, IceCreamBowl, CupSoda, ShoppingBag, Wifi, Sparkles, Leaf,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Plus,
 } from 'lucide-react';
 import { C } from '../utils';
 import { CARTA, CARTA_HEADER, SUGERENCIAS } from '../carta';
@@ -23,7 +23,7 @@ const Badge = ({ children, color }) => (
   </span>
 );
 
-function Item({ item }) {
+function Item({ item, onAdd }) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', borderBottom: '1px solid #dde2e6',
@@ -35,8 +35,20 @@ function Item({ item }) {
           {item.veggie && <Badge color="#4CAF50"><Leaf size={8} style={{ verticalAlign: 'middle', marginRight: '2px' }} />Veggie</Badge>}
           {item.sugerido && <Badge color="#800000">Sugerido</Badge>}
         </span>
-        <span style={{ fontFamily: '"Fraunces", serif', fontSize: '15px', fontWeight: 700, color: C.forest, whiteSpace: 'nowrap' }}>
-          {fmtPrecio(item.price)}
+        <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontFamily: '"Fraunces", serif', fontSize: '15px', fontWeight: 700, color: C.forest, whiteSpace: 'nowrap' }}>
+            {fmtPrecio(item.price)}
+          </span>
+          {onAdd && (
+            <button type="button" aria-label={`Agregar ${item.name}`} onClick={() => onAdd(item)} style={{
+              width: '28px', height: '28px', borderRadius: '50%',
+              background: C.terra, color: '#fff', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, padding: '0',
+            }}>
+              <Plus size={15} />
+            </button>
+          )}
         </span>
       </div>
       {item.desc && (
@@ -48,7 +60,7 @@ function Item({ item }) {
   );
 }
 
-function Group({ title, items }) {
+function Group({ title, items, onAdd }) {
   return (
     <div style={{ marginBottom: '18px' }}>
       {title && (
@@ -56,12 +68,12 @@ function Group({ title, items }) {
           {title}
         </h4>
       )}
-      {items.map((item, i) => <Item key={i} item={item} />)}
+      {items.map((item, i) => <Item key={i} item={item} onAdd={onAdd} />)}
     </div>
   );
 }
 
-export default function CartaVirtual() {
+export default function CartaVirtual({ onAddItem }) {
   const [openSections, setOpenSections] = useState({});
   const [carta, setCarta] = useState({ CARTA, SUGERENCIAS });
   const [fresh, setFresh] = useState(false);
@@ -112,9 +124,21 @@ export default function CartaVirtual() {
         </h3>
         <div style={{ background: '#fff', borderRadius: '10px', padding: '6px 12px' }}>
           {carta.SUGERENCIAS.map((s, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '8px 0', borderBottom: i < carta.SUGERENCIAS.length - 1 ? '1px solid #e8ecef' : 'none', fontSize: '13px' }}>
-              <span style={{ color: C.espresso, lineHeight: 1.4 }}>{s.name}</span>
-              <span style={{ color: '#800000', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: '"Fraunces", serif' }}>{fmtPrecio(s.price)}</span>
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: i < carta.SUGERENCIAS.length - 1 ? '1px solid #e8ecef' : 'none', fontSize: '13px' }}>
+              <span style={{ color: C.espresso, lineHeight: 1.4, flex: 1 }}>{s.name}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                <span style={{ color: '#800000', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: '"Fraunces", serif' }}>{fmtPrecio(s.price)}</span>
+                {onAddItem && (
+                  <button type="button" aria-label={`Agregar ${s.name}`} onClick={() => onAddItem(s)} style={{
+                    width: '26px', height: '26px', borderRadius: '50%',
+                    background: C.terra, color: '#fff', border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, padding: '0',
+                  }}>
+                    <Plus size={14} />
+                  </button>
+                )}
+              </span>
             </div>
           ))}
         </div>
@@ -144,8 +168,8 @@ export default function CartaVirtual() {
             {open && (
               <div style={{ padding: '2px 14px 12px' }}>
                 {sec.groups
-                  ? sec.groups.map((g, gi) => <Group key={gi} title={g.title} items={g.items} />)
-                  : <Group items={sec.items} />}
+                  ? sec.groups.map((g, gi) => <Group key={gi} title={g.title} items={g.items} onAdd={onAddItem} />)
+                  : <Group items={sec.items} onAdd={onAddItem} />}
               </div>
             )}
           </div>

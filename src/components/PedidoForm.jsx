@@ -51,6 +51,15 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  // ── Agregar ítem desde la carta al detalle del pedido ──────────────────
+  const handleAddItem = useCallback((item) => {
+    const line = `• ${item.name}`;
+    setForm(f => ({
+      ...f,
+      details: f.details.trim() === '' ? line : `${f.details.replace(/\s+$/, '')}\n${line}`,
+    }));
+  }, []);
+
   // ── Validación ───────────────────────────────────────────────────────────
   const valid = form.customerName.trim().length >= 2
     && form.phone.trim().length >= 6
@@ -189,7 +198,7 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
           {showCarta ? <ChevronUp size={18} color={C.muted} /> : <ChevronDown size={18} color={C.muted} />}
         </button>
 
-        {showCarta && <CartaVirtual />}
+        {showCarta && <CartaVirtual onAddItem={handleAddItem} />}
 
         <Field label="Detalle del pedido">
           <textarea

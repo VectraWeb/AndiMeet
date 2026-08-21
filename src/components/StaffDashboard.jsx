@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Plus, X } from 'lucide-react';
 import {
-  doc, setDoc, updateDoc, deleteDoc,
+  doc, setDoc, updateDoc,
   serverTimestamp, runTransaction, arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -27,7 +27,7 @@ import PedidosPanel from './PedidosPanel';
 import {
   C, LIVE_STATES, SERVICES, DEFAULT_CONFIG,
   t2m, genSlots, buildTables, todayISO,
-  detectService, notificarN8N, computeStateDurations,
+  detectService, computeStateDurations,
   getAssignedTables,
 } from '../utils';
 
@@ -204,11 +204,19 @@ export default function StaffDashboard({ onLogout }) {
 
   const deleteRes = useCallback(async (resData) => {
     try {
-      if (resData.tableId) {
-        const mesaRef = mesaReservadaRef(resData.tableId, date, resData.service);
-        await deleteDoc(mesaRef);
-      }
-      await deleteDoc(resDocRef(resData.id));
+      await runTransaction(db, async (transaction) => {
+        // Solo liberamos la mesa si sigue perteneciendo a ESTA reserva:
+        // si otro dispositivo la reasignó, el mesaRef ahora apunta a la nueva
+        // y borrarlo dejaría una mesa ocupada sin protección.
+        if (resData.tableId && resData.service) {
+          const mesaRef = mesaReservadaRef(resData.tableId, date, resData.service);
+          const mesaSnap = await transaction.get(mesaRef);
+          if (mesaSnap.exists && mesaSnap.data().reservationId === resData.id) {
+            transaction.delete(mesaRef);
+          }
+        }
+        transaction.delete(resDocRef(resData.id));
+      });
     } catch (e) { console.error(e); throw e; }
   }, [date]);
 
@@ -234,51 +242,6 @@ export default function StaffDashboard({ onLogout }) {
       setOptimisticStates(prev => { const n = { ...prev }; delete n[res.id]; return n; });
     }
   }, []);
-
-  const finalizeReservation = useCallback(async (res) => {
-    setQuickActionMenu(null);
-    setShowLiveMenu(null);
-    setOptimisticStates(prev => ({ ...prev, [res.id]: 'finalizada' }));
-
-    const toMs = (ts) => {
-      if (!ts) return Date.now();
-      if (typeof ts === 'number') return ts;
-      if (ts.toMillis) return ts.toMillis();
-      if (ts.seconds) return ts.seconds * 1000;
-      return new Date(ts).getTime();
-    };
-
-    const startTs = toMs(res.startedAt || res.createdAt);
-    const duracionMinutos = Math.round((Date.now() - startTs) / 60000);
-    const tableName = res.mesa || tables.find(t => t.id === res.tableId)?.name || res.tableId;
-
-    notificarN8N({
-      evento: 'reserva_finalizada',
-      cliente_nombre: res.customerName,
-      mesa: tableName,
-      mesa_id: res.tableId,
-      servicio: res.service,
-      duracion_total_minutos: duracionMinutos
-    });
-
-    try {
-      if (res.tableId) {
-        await deleteDoc(mesaReservadaRef(res.tableId, date, res.service));
-      }
-      await updateDoc(resDocRef(res.id), {
-        liveState: 'finalizado',
-        leftAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      updateDoc(resDocRef(res.id), {
-        stateLog: arrayUnion({ state: 'finalizado', at: new Date().toISOString() }),
-      }).catch(err => console.warn('[Andi] Fallo al registrar stateLog:', err));
-      setOptimisticStates(prev => { const n = { ...prev }; delete n[res.id]; return n; });
-    } catch (e) {
-      console.warn('[Andi] Fallo al finalizar reserva, revirtiendo estado...', e);
-      setOptimisticStates(prev => { const n = { ...prev }; delete n[res.id]; return n; });
-    }
-  }, [date, tables]);
 
   // ── Resetear estado en vivo (Limpiar mesa) ──────────────────────────────
   const resetLiveState = useCallback(async (res) => {
@@ -352,6 +315,20 @@ export default function StaffDashboard({ onLogout }) {
 
   // ── Cleaning Timers ──────────────────────────────────────────────────────────
   const { cleaningTimers, finishNow, extendCleaning, cancelCleaning } = useCleaningTimers(reservations, date, tables);
+
+  // ── Finalizar reserva desde el menú rápido ─────────────────────────────
+  // Delega en doFinalize (useCleaningTimers) para tener UNA sola implementación:
+  // notificación a n8n, liberación de mesa, métricas y stateLog consistentes.
+  const handleFinalizeQuick = useCallback((res) => {
+    setQuickActionMenu(null);
+    setShowLiveMenu(null);
+    setOptimisticStates(prev => ({ ...prev, [res.id]: 'finalizada' }));
+    Promise.resolve(finishNow(res))
+      .catch(() => {})
+      .finally(() => {
+        setOptimisticStates(prev => { const n = { ...prev }; delete n[res.id]; return n; });
+      });
+  }, [finishNow]);
 
   const analyticsData = useMemo(() => {
     const src = analyticsPeriod === 'day' ? reservations : analyticsRes;
@@ -476,6 +453,7 @@ export default function StaffDashboard({ onLogout }) {
       showToast('Esta reserva no tiene mesa asignada.');
       return;
     }
+    setPlanoHover(false);
     setMainTab('plano');
     setHighlightTableId(tableId);
     setFocusRequest({ tableId, key: Date.now() });
@@ -632,7 +610,7 @@ export default function StaffDashboard({ onLogout }) {
           ['plano', 'Plano', 'Arrastrable'],
           ['pedidos', 'Pedidos', 'Bot y web'],
         ].map(([key, label, sub]) => (
-          <button key={key} onClick={() => setMainTab(key)} style={{
+          <button key={key} onClick={() => { setMainTab(key); setPlanoHover(false); }} style={{
             flex: 1, padding: '10px 12px', borderRadius: '12px', border: 'none', cursor: 'pointer',
             background: mainTab === key ? C.forest : C.creamDeep,
             color: mainTab === key ? C.cream : C.muted,
@@ -901,7 +879,7 @@ export default function StaffDashboard({ onLogout }) {
           ['plano', 'Plano', ''],
           ['pedidos', 'Pedidos', ''],
         ].map(([key, label, count]) => (
-          <button key={key} onClick={() => setMainTab(key)} style={{
+          <button key={key} onClick={() => { setMainTab(key); setPlanoHover(false); }} style={{
             flex: 1, padding: '10px 8px', borderRadius: '12px', border: 'none', cursor: 'pointer',
             background: mainTab === key ? C.forest : 'transparent',
             color: mainTab === key ? C.cream : C.muted,
@@ -1025,7 +1003,7 @@ export default function StaffDashboard({ onLogout }) {
               {nextStates.map(stateKey => {
                 if (stateKey === 'finalizar') {
                   return (
-                    <button key="finalizar" onClick={() => finalizeReservation(quickActionMenu.res)} style={{
+                    <button key="finalizar" onClick={() => handleFinalizeQuick(quickActionMenu.res)} style={{
                       background: C.free, color: '#fff', border: 'none', padding: '10px 12px',
                       fontSize: '13px', fontWeight: 600, cursor: 'pointer', borderRadius: '8px', textAlign: 'center'
                     }}>

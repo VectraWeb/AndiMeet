@@ -173,7 +173,9 @@ export const timeBelongsToService = (time, svc) => {
   let start = sh * 60 + sm;
   let end = eh * 60 + em;
   if (end < start) end += 24 * 60;
-  const t = h * 60 + m + (h < 12 ? 24 * 60 : 0);
+  // El +24h solo aplica a la cena (cruza medianoche). Para el mediodía,
+  // "11:30" es válido y NO debe desplazarse al día siguiente.
+  const t = h * 60 + m + (svc === 'cena' && h < 12 ? 24 * 60 : 0);
   return t >= start && t <= end;
 };
 

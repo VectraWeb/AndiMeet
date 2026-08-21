@@ -58,6 +58,9 @@ export default function StaffDashboard({ onLogout }) {
   const nowMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
   const [analyticsMonth, setAnalyticsMonth] = useState(nowMonth);
   const [mainTab, setMainTab] = useState('reservas');
+  const [highlightTableId, setHighlightTableId] = useState(null);
+  const [focusRequest, setFocusRequest] = useState(null);
+  const highlightTimerRef = useRef(null);
   const [editingLayout, setEditingLayout] = useState(false);
   const [optimisticStates, setOptimisticStates] = useState({});
   const [quickActionMenu, setQuickActionMenu] = useState(null);
@@ -463,6 +466,51 @@ export default function StaffDashboard({ onLogout }) {
     }
   }, [deleteRes, showToast]);
 
+  // Botón "Plano" en la tarjeta: ir al plano y resaltar la mesa de la reserva.
+  // El highlight + banner expiran a los 5s; el foco se re-arma con cada click
+  // (key nueva) para que se pueda repetir las veces que se quiera.
+  const handleGoToTable = useCallback((r) => {
+    const tableId = r?.tableId || r?.mesa;
+    if (!tableId) {
+      showToast('Esta reserva no tiene mesa asignada.');
+      return;
+    }
+    setMainTab('plano');
+    setHighlightTableId(tableId);
+    setFocusRequest({ tableId, key: Date.now() });
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => setHighlightTableId(null), 5000);
+  }, [showToast]);
+
+  // ── CRUD de pedidos (staff) ────────────────────────────────────────────────
+  const savePedido = useCallback(async (data) => {
+    const id = `p${Date.now()}`;
+    try {
+      await setDoc(doc(db, 'pedidos', id), {
+        id,
+        customerName: data.customerName.trim(),
+        customerPhone: data.phone.trim(),
+        modalidad: data.modalidad,
+        direccion: data.modalidad === 'envio' ? data.direccion.trim() : '',
+        notes: data.details.trim(),
+        tipo: 'pedido',
+        source: 'staff',
+        pedidoEstado: 'pendiente',
+        estado: 'pendiente',
+        service,
+        date,
+        staffId: data.staffId || '',
+        staffName: data.staffName || '',
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+      });
+      setShowModal(false); setEditing(null); setPreTable(null);
+      showToast('Pedido guardado.');
+    } catch {
+      showToast('Error al guardar el pedido. Intentá de nuevo.');
+    }
+  }, [service, date, setShowModal, setEditing, setPreTable, showToast]);
+
   // ── Callbacks estables para el plano (mantienen efectivo el React.memo) ────
   const toggleEditingLayout = useCallback(() => setEditingLayout(v => !v), []);
   const toggleEditingSectors = useCallback(() => setEditingSectors(v => !v), []);
@@ -601,7 +649,11 @@ export default function StaffDashboard({ onLogout }) {
       {mainTab === 'reservas' && (() => {
         const activeStaff = (staff || []).filter(s => s && s.active !== false);
         const selected = activeStaff.find(s => s.id === selectedMozoTab) || null;
-        const mozoRes = selected ? svcRes.filter(r => r.staffName === selected.name) : [];
+        // Reservas por mozo (por nombre, como se guarda en la reserva).
+        const mozoSvcRes = (s) => svcRes.filter(r => r.staffName === s.name);
+        // La lista general muestra solo reservas sin mozo asignado:
+        // las que ya tienen mozo viven en el bloque de ese mozo.
+        const unassignedRes = sortedRes.filter(r => !r.staffName);
 
         const handleMozoTap = (s) => {
           setSelectedMozoTab(prev => (prev === s.id ? '__todas__' : s.id));
@@ -642,16 +694,17 @@ export default function StaffDashboard({ onLogout }) {
               </button>
 
               {showReservas && (
-                sortedRes.length > 0 ? (
+                unassignedRes.length > 0 ? (
                   <ReservationList
-                    sortedRes={sortedRes}
+                    sortedRes={unassignedRes}
                     tables={tables}
                     onEdit={(r) => { setEditing(r); setShowModal(true); }}
                     onAction={(r) => setShowLiveMenu(r)}
+                    onGoToTable={handleGoToTable}
                   />
                 ) : (
                   <div style={{ padding: '20px', textAlign: 'center', color: C.muted, fontSize: '13px', background: C.creamDeep, borderRadius: '12px' }}>
-                    No hay reservas para este servicio
+                    No hay reservas sueltas: todas tienen mozo asignado
                   </div>
                 )
               )}
@@ -743,6 +796,23 @@ export default function StaffDashboard({ onLogout }) {
                             Sin mesas asignadas
                           </div>
                         )}
+
+                        {/* Reservas del mozo dentro de su bloque */}
+                        {mozoSvcRes(s).length > 0 ? (
+                          <div style={{ marginTop: '12px', background: C.white, borderRadius: '12px', padding: '10px' }}>
+                            <ReservationList
+                              sortedRes={mozoSvcRes(s)}
+                              tables={tables}
+                              onEdit={(r) => { setEditing(r); setShowModal(true); }}
+                              onAction={(r) => setShowLiveMenu(r)}
+                              onGoToTable={handleGoToTable}
+                            />
+                          </div>
+                        ) : (
+                          <div style={{ marginTop: '12px', padding: '10px', textAlign: 'center', color: C.muted, fontSize: '12px', background: C.white, borderRadius: '10px' }}>
+                            Sin reservas para este mozo
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -750,20 +820,11 @@ export default function StaffDashboard({ onLogout }) {
               })}
             </div>
 
-            {/* Reservas del mozo seleccionado */}
-            {selected && (
-              mozoRes.length > 0 ? (
-                <ReservationList
-                  sortedRes={mozoRes}
-                  tables={tables}
-                  onEdit={(r) => { setEditing(r); setShowModal(true); }}
-                  onAction={(r) => setShowLiveMenu(r)}
-                />
-              ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: C.muted, fontSize: '13px', background: C.creamDeep, borderRadius: '12px' }}>
-                  {selected.name} no tiene reservas en este servicio
-                </div>
-              )
+            {/* Reservas del mozo seleccionado (bloque colapsado: ayuda rápidamente) */}
+            {selected && !mozoSvcRes(selected).length && (
+              <div style={{ padding: '20px', textAlign: 'center', color: C.muted, fontSize: '13px', background: C.creamDeep, borderRadius: '12px', marginTop: '8px' }}>
+                {selected.name} no tiene reservas en este servicio
+              </div>
             )}
           </div>
         );
@@ -788,6 +849,8 @@ export default function StaffDashboard({ onLogout }) {
           onToggleEditSectors={toggleEditingSectors}
           onSaveSectors={saveSectorsFromPlano}
           onTableClick={handleTableClick}
+          highlightTableId={highlightTableId}
+          focusRequest={focusRequest}
         />
       )}
 
@@ -811,7 +874,7 @@ export default function StaffDashboard({ onLogout }) {
       <div className="mobile-bottom-nav" style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: C.cream, borderTop: `1px solid ${C.creamDeep}`,
-        padding: '8px 16px calc(8px + env(safe-area-inset-bottom, 0px))',
+        padding: '10px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
         display: 'flex', gap: '8px', zIndex: 200,
         boxShadow: '0 -4px 12px rgba(0,0,0,0.08)',
       }}>
@@ -863,6 +926,7 @@ export default function StaffDashboard({ onLogout }) {
           ownerByTable={ownerByTable}
           mozoTableIds={mozoTableIds}
           onSave={handleSave}
+          onSavePedido={savePedido}
           onDelete={handleDelete}
           onClose={() => { setShowModal(false); setEditing(null); setPreTable(null); }}
         />

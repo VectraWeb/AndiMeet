@@ -1,8 +1,8 @@
 import React from 'react';
-import { Users, Clock, User, RefreshCw } from 'lucide-react';
+import { Users, Clock, User, RefreshCw, MapPin } from 'lucide-react';
 import { C, LIVE_STATES } from '../utils';
 
-const ReservationList = React.memo(function ReservationList({ sortedRes, tables, onEdit, onAction }) {
+const ReservationList = React.memo(function ReservationList({ sortedRes, tables, onEdit, onAction, onGoToTable }) {
   if (sortedRes.length === 0) {
     return (
       <div style={{ padding: '32px 16px', textAlign: 'center', color: C.muted, background: C.creamDeep, borderRadius: '14px', fontSize: '13px' }}>
@@ -33,7 +33,9 @@ const ReservationList = React.memo(function ReservationList({ sortedRes, tables,
         }
 
         return (
-          <button key={r.id} onClick={() => onEdit(r)} style={{
+          <div key={r.id} role="button" tabIndex={0} onClick={() => onEdit(r)}
+            onKeyDown={(e) => { if (e.key === 'Enter') onEdit(r); }}
+            style={{
             display: 'flex', alignItems: 'center', gap: '12px', padding: '12px',
             background: C.white, border: `1px solid ${C.creamDeep}`,
             borderRadius: '14px', cursor: 'pointer', textAlign: 'left',
@@ -64,27 +66,47 @@ const ReservationList = React.memo(function ReservationList({ sortedRes, tables,
               {r.notes && <div style={{ fontSize: '11px', color: C.terra, marginTop: '3px', fontStyle: 'italic' }}>{r.notes}</div>}
             </div>
             {!isDone && (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAction(r);
-                }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onAction(r); } }}
-                style={{
-                  flexShrink: 0, background: badgeColor,
-                  border: 'none', borderRadius: '10px', padding: '6px 8px',
-                  cursor: 'pointer', color: C.white,
-                  fontSize: '10px', fontWeight: 600, display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', gap: '2px', minWidth: '52px',
-                }}
-              >
-                {started ? <RefreshCw size={12} /> : <span style={{ fontSize: '14px' }}>▶</span>}
-                <span>{badgeLabel}</span>
-              </div>
+              onGoToTable ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onGoToTable(r);
+                  }}
+                  style={{
+                    flexShrink: 0, background: badgeColor,
+                    border: 'none', borderRadius: '12px', padding: '10px 12px',
+                    cursor: 'pointer', color: C.white,
+                    fontSize: '11px', fontWeight: 700, display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', gap: '3px', minWidth: '64px', minHeight: '48px',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <MapPin size={15} />
+                  <span>Plano</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAction(r);
+                  }}
+                  style={{
+                    flexShrink: 0, background: badgeColor,
+                    border: 'none', borderRadius: '12px', padding: '10px 12px',
+                    cursor: 'pointer', color: C.white,
+                    fontSize: '11px', fontWeight: 700, display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', gap: '3px', minWidth: '64px', minHeight: '48px',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {started ? <RefreshCw size={14} /> : <span style={{ fontSize: '16px' }}>▶</span>}
+                  <span>{badgeLabel}</span>
+                </button>
+              )
             )}
-          </button>
+          </div>
         );
       })}
     </div>

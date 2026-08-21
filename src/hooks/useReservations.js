@@ -6,6 +6,15 @@ import { toLocalISO } from '../utils';
 const resCol = () => collection(db, 'reservations');
 const MAX_IN_VALUES = 10;
 
+// El bot (y datos viejos) pueden traer service como 'Cena'/'Mediodía'.
+// Normalizamos a 'mediodia'/'cena' para que los filtros de la UI matcheen.
+const normService = (s) => {
+  const r = String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (r.includes('mediod') || r.includes('almuerzo')) return 'mediodia';
+  if (r.includes('cen') || r.includes('noche')) return 'cena';
+  return r;
+};
+
 export function useReservations(date) {
   const [reservations, setReservations] = useState([]);
 
@@ -15,7 +24,7 @@ export function useReservations(date) {
       q,
       (snap) => {
         const data = snap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
+          .map(d => ({ ...d.data(), id: d.id, service: normService(d.data().service) }))
           .filter(r => r.source !== 'whatsapp_bot');
         setReservations(data);
       },
@@ -77,7 +86,7 @@ export function useAnalyticsReservations(date, showAnalytics, analyticsPeriod, a
           chunks.map(c => getDocs(query(resCol(), where('date', 'in', c))))
         );
         const all = results.flatMap(snap => snap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
+          .map(d => ({ ...d.data(), id: d.id, service: normService(d.data().service) }))
           .filter(r => r.source !== 'whatsapp_bot')
         );
         if (!cancelled) setAnalyticsState({ period: key, month: analyticsMonth, data: all });

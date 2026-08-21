@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { Save, RotateCcw, Move } from 'lucide-react';
 import { C as PALETTE, LIVE_STATES, rectsOverlap } from '../utils';
 import { useCleaningCountdown } from '../hooks/useCleaningTimers';
@@ -116,7 +116,7 @@ const formatCountdown = (sec) => {
 const TableShape = React.memo(function TableShape({
   t, pos, dim, s, timer, sectorColor, tableNum,
   isEditing, isEditingSectors, isMobile,
-  onClick, onDragStart,
+  onClick, onDragStart, highlighted,
 }) {
   const ct = useCleaningCountdown(timer?.expiresAt);
   const bg = tableColor(s.status, s.res?.liveState, ct);
@@ -151,9 +151,11 @@ const TableShape = React.memo(function TableShape({
         WebkitUserSelect: 'none',
         touchAction: 'none',
         WebkitTouchCallout: 'none',
-        boxShadow: sectorColor
-          ? `inset 0 0 0 3px ${sectorColor}, 0 2px 6px rgba(0,0,0,0.1)`
-          : '0 2px 6px rgba(0,0,0,0.1)',
+        boxShadow: highlighted
+          ? `0 0 0 4px #f6c945, 0 0 0 8px rgba(246,201,69,0.35), 0 2px 6px rgba(0,0,0,0.1)`
+          : sectorColor
+            ? `inset 0 0 0 3px ${sectorColor}, 0 2px 6px rgba(0,0,0,0.1)`
+            : '0 2px 6px rgba(0,0,0,0.1)',
         transition: isEditing ? 'none' : 'background 0.3s',
         zIndex: isEditingSectors ? 1 : 10,
         pointerEvents: isEditingSectors ? 'none' : 'auto',
@@ -214,11 +216,13 @@ const SalonFloor = React.memo(function SalonFloor({
   positions, setPositions, groups, setGroups, saveLayout,
   isEditing, onToggleEdit,
   sectors, isEditingSectors, onToggleEditSectors, onSaveSectors,
+  highlightTableId, focusRequest,
 }) {
   const [dirty, setDirty] = useState(false);
   const containerRef = useRef(null);
   const dragRef = useRef(null);
   const sectorDragRef = useRef(null);
+  const lastFocusKeyRef = useRef(0);
 
   const [fitScale, setFitScale] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -276,6 +280,49 @@ const SalonFloor = React.memo(function SalonFloor({
     setZoom(1);
     setOffset({ x: 0, y: 0 });
   }, []);
+
+  // Focus a una mesa desde la lista de reservas: zoom + pan hacia ella.
+  // Se re-ejecuta SOLO cuando cambia la key (nuevo click), no en re-renders.
+  useLayoutEffect(() => {
+    if (!focusRequest) return;
+    if (lastFocusKeyRef.current === focusRequest.key) return;
+    lastFocusKeyRef.current = focusRequest.key;
+    const t = tables.find(tb => tb.id === focusRequest.tableId);
+    const p = positions[focusRequest.tableId];
+    if (!t || !p) return;
+    const d = TABLE_DIMS[t.shape] || TABLE_DIMS.round;
+    const cx = p.x + d.w / 2;
+    const cy = p.y + d.h / 2;
+    const targetZoom = 1.8;
+    const el = containerRef.current;
+    const w = el?.clientWidth || 600;
+    const h = el?.clientHeight || 500;
+    const s = fitScale * targetZoom;
+    let nx, ny;
+    if (isMobile) {
+      // Canvas rotado 90° alrededor de su centro (transformOrigin center).
+      // Punto (cx,cy) del canvas → pantalla:
+      //   screenX = w/2 + offset.x − s·(cy − H/2)
+      //   screenY = h/2 + offset.y + s·(cx − W/2)
+      // → offset para centrar la mesa:
+      nx = (cy - CANVAS_H / 2) * s;
+      ny = (CANVAS_W / 2 - cx) * s;
+    } else {
+      nx = w / 2 - cx * s;
+      ny = h / 2 - cy * s;
+    }
+    // Clamp suave: permite desplazar hasta el borde del canvas visual
+    // (en mobile el canvas rota: ancho visual = CANVAS_H·s, alto = CANVAS_W·s)
+    const visW = (isMobile ? CANVAS_H : CANVAS_W) * s;
+    const visH = (isMobile ? CANVAS_W : CANVAS_H) * s;
+    const limX = Math.max(0, (visW - w) / 2 + visW * 0.1);
+    const limY = Math.max(0, (visH - h) / 2 + visH * 0.1);
+    nx = Math.max(-limX, Math.min(limX, nx));
+    ny = Math.max(-limY, Math.min(limY, ny));
+    setOffset({ x: nx, y: ny });
+    setZoom(targetZoom);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequest, tables, positions]);
 
   // Wheel zoom (PC) — listener no-pasivo para poder cancelar el scroll
   useEffect(() => {
@@ -1096,6 +1143,7 @@ const SalonFloor = React.memo(function SalonFloor({
                 isMobile={isMobile}
                 onClick={handleClick}
                 onDragStart={handleDragStart}
+                highlighted={highlightTableId === t.id}
               />
             );
           })}
@@ -1103,6 +1151,28 @@ const SalonFloor = React.memo(function SalonFloor({
       </div>
 
       {/* ── LEYENDA DE COLORES ── */}
+      {highlightTableId && (
+        <div style={{
+          position: 'sticky',
+          margin: '4px 8px 0',
+          padding: '12px 16px',
+          background: PALETTE.forest,
+          color: '#fff',
+          borderRadius: '12px',
+          display: 'flex', alignItems: 'center', gap: '10px',
+          fontSize: '13px', fontWeight: 600,
+          zIndex: 20,
+        }}>
+          <span style={{
+            width: '14px', height: '14px', borderRadius: '50%',
+            background: '#f6c945',
+            boxShadow: '0 0 0 4px rgba(246,201,69,0.35)',
+            animation: 'andi-pulse 1s ease-in-out infinite',
+          }} />
+          Mesa destacada: la reserva está en la mesa marcada con anillo dorado
+        </div>
+      )}
+
       <div style={{
         display: 'flex', flexWrap: 'wrap', gap: '6px 16px',
         padding: '14px 20px', marginTop: '8px',

@@ -1,5 +1,5 @@
 // CartaVirtual.jsx — Carta del restaurante renderizada nativa (sin iframe)
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Wine, UtensilsCrossed, Sandwich, Croissant, Droplets, Drumstick,
   Fish, Salad, IceCreamBowl, CupSoda, ShoppingBag, Wifi, Sparkles, Leaf,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { C } from '../utils';
 import { CARTA, CARTA_HEADER, SUGERENCIAS } from '../carta';
+import { fetchCarta } from '../services/cartaFetcher';
 
 const ICONS = { Wine, UtensilsCrossed, Sandwich, Croissant, Droplets, Drumstick, Fish, Salad, IceCreamBowl, CupSoda, ShoppingBag, Wifi };
 
@@ -62,6 +63,19 @@ function Group({ title, items }) {
 
 export default function CartaVirtual() {
   const [openSections, setOpenSections] = useState({});
+  const [carta, setCarta] = useState({ CARTA, SUGERENCIAS });
+  const [fresh, setFresh] = useState(false);
+
+  // Carta actualizada desde el sitio (fallback a la local si falla)
+  useEffect(() => {
+    let cancelled = false;
+    fetchCarta().then(d => {
+      if (cancelled || !d) return;
+      setCarta(d);
+      setFresh(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const toggleSection = (title) => {
     setOpenSections(prev => ({ ...prev, [title]: !prev[title] }));
@@ -84,6 +98,11 @@ export default function CartaVirtual() {
             </div>
           );
         })}
+        {fresh && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#6b8f71', padding: '4px 2px' }}>
+            ✓ Actualizada automáticamente desde nuestro sitio
+          </div>
+        )}
       </div>
 
       {/* Hoy sugerimos */}
@@ -92,8 +111,8 @@ export default function CartaVirtual() {
           <Sparkles size={16} color="#800000" /> Hoy sugerimos
         </h3>
         <div style={{ background: '#fff', borderRadius: '10px', padding: '6px 12px' }}>
-          {SUGERENCIAS.map((s, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '8px 0', borderBottom: i < SUGERENCIAS.length - 1 ? '1px solid #e8ecef' : 'none', fontSize: '13px' }}>
+          {carta.SUGERENCIAS.map((s, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '8px 0', borderBottom: i < carta.SUGERENCIAS.length - 1 ? '1px solid #e8ecef' : 'none', fontSize: '13px' }}>
               <span style={{ color: C.espresso, lineHeight: 1.4 }}>{s.name}</span>
               <span style={{ color: '#800000', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: '"Fraunces", serif' }}>{fmtPrecio(s.price)}</span>
             </div>
@@ -102,7 +121,7 @@ export default function CartaVirtual() {
       </div>
 
       {/* Secciones desplegables */}
-      {CARTA.map((sec, i) => {
+      {carta.CARTA.map((sec, i) => {
         const Icon = ICONS[sec.icon] || UtensilsCrossed;
         const open = !!openSections[sec.title];
         return (

@@ -61,6 +61,7 @@ export default function StaffDashboard({ onLogout }) {
   const [highlightTableId, setHighlightTableId] = useState(null);
   const [focusRequest, setFocusRequest] = useState(null);
   const highlightTimerRef = useRef(null);
+  const [planoHover, setPlanoHover] = useState(false);
   const [editingLayout, setEditingLayout] = useState(false);
   const [optimisticStates, setOptimisticStates] = useState({});
   const [quickActionMenu, setQuickActionMenu] = useState(null);
@@ -649,9 +650,9 @@ export default function StaffDashboard({ onLogout }) {
         const selected = activeStaff.find(s => s.id === selectedMozoTab) || null;
         // Reservas por mozo (por nombre, como se guarda en la reserva).
         const mozoSvcRes = (s) => svcRes.filter(r => r.staffName === s.name);
-        // La lista general muestra solo reservas sin mozo asignado:
+        // La lista general muestra solo reservas PENDIENTES sin mozo asignado:
         // las que ya tienen mozo viven en el bloque de ese mozo.
-        const unassignedRes = sortedRes.filter(r => !r.staffName);
+        const unassignedRes = sortedRes.filter(r => !r.staffName && r.estado === 'pendiente');
 
         const handleMozoTap = (s) => {
           setSelectedMozoTab(prev => (prev === s.id ? '__todas__' : s.id));
@@ -669,7 +670,7 @@ export default function StaffDashboard({ onLogout }) {
                 background: showReservas ? C.forest : C.creamDeep,
                 color: showReservas ? C.cream : C.espresso,
               }}>
-                <div style={{ fontSize: '15px', fontWeight: 700 }}>Reservas</div>
+                <div style={{ fontSize: '15px', fontWeight: 700 }}>Reservas pendientes</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{
                     background: showReservas ? C.cream : C.forestSoft,
@@ -677,7 +678,7 @@ export default function StaffDashboard({ onLogout }) {
                     padding: '4px 10px', borderRadius: '8px',
                     fontSize: '12px', fontWeight: 700,
                   }}>
-                    {sortedRes.length}
+                    {unassignedRes.length}
                   </div>
                   <div style={{
                     width: '24px', height: '24px', borderRadius: '50%',
@@ -702,7 +703,7 @@ export default function StaffDashboard({ onLogout }) {
                   />
                 ) : (
                   <div style={{ padding: '20px', textAlign: 'center', color: C.muted, fontSize: '13px', background: C.creamDeep, borderRadius: '12px' }}>
-                    No hay reservas sueltas: todas tienen mozo asignado
+                    No hay reservas pendientes sin mozo asignado
                   </div>
                 )
               )}
@@ -733,9 +734,24 @@ export default function StaffDashboard({ onLogout }) {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '14px', fontWeight: 600 }}>{s.name}</div>
                         <div style={{ fontSize: '11px', opacity: 0.75 }}>
-                          {assigned.length} mesa{assigned.length !== 1 ? 's' : ''} · {count > 0 ? `${count} reserva${count !== 1 ? 's' : ''}` : 'Sin reservas'}
+                          {assigned.length} mesa{assigned.length !== 1 ? 's' : ''}
+                          {count > 0 && ' · '}
+                          {count > 0 && `${count} reserva${count !== 1 ? 's' : ''}`}
                         </div>
                       </div>
+                      {count > 0 && (
+                        <div style={{
+                          flexShrink: 0, minWidth: '40px', textAlign: 'center',
+                          background: expanded ? 'rgba(255,255,255,0.2)' : C.forest,
+                          color: expanded ? C.cream : C.cream,
+                          padding: '6px 10px', borderRadius: '10px',
+                          fontSize: '18px', fontWeight: 800, fontFamily: '"Fraunces", serif',
+                          boxShadow: !expanded ? `0 3px 10px rgba(31,58,46,0.25)` : 'none',
+                          lineHeight: 1,
+                        }}>
+                          {count}
+                        </div>
+                      )}
                       <div style={{
                         width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
                         background: expanded ? C.cream : C.forestSoft,
@@ -804,6 +820,7 @@ export default function StaffDashboard({ onLogout }) {
                               onEdit={(r) => { setEditing(r); setShowModal(true); }}
                               onAction={(r) => setShowLiveMenu(r)}
                               onGoToTable={handleGoToTable}
+                              onPlanoHover={setPlanoHover}
                             />
                           </div>
                         ) : (
@@ -864,6 +881,9 @@ export default function StaffDashboard({ onLogout }) {
         background: C.terra, color: '#fff', border: 'none',
         boxShadow: '0 8px 24px rgba(196,96,47,0.4)', cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+        opacity: planoHover ? 0.08 : 1,
+        pointerEvents: planoHover ? 'none' : 'auto',
+        transition: 'opacity 0.15s ease',
       }}>
         <Plus size={26} />
       </button>

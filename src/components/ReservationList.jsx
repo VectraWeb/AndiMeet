@@ -2,7 +2,7 @@ import React from 'react';
 import { Users, Clock, User, RefreshCw, MapPin } from 'lucide-react';
 import { C, LIVE_STATES } from '../utils';
 
-const ReservationList = React.memo(function ReservationList({ sortedRes, tables, onEdit, onAction, onGoToTable }) {
+const ReservationList = React.memo(function ReservationList({ sortedRes, tables, onEdit, onAction, onGoToTable, onPlanoHover }) {
   if (sortedRes.length === 0) {
     return (
       <div style={{ padding: '32px 16px', textAlign: 'center', color: C.muted, background: C.creamDeep, borderRadius: '14px', fontSize: '13px' }}>
@@ -73,6 +73,8 @@ const ReservationList = React.memo(function ReservationList({ sortedRes, tables,
                     e.stopPropagation();
                     onGoToTable(r);
                   }}
+                  onMouseEnter={() => onPlanoHover?.(true)}
+                  onMouseLeave={() => onPlanoHover?.(false)}
                   style={{
                     flexShrink: 0, background: badgeColor,
                     border: 'none', borderRadius: '12px', padding: '10px 12px',

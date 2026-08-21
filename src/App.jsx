@@ -87,7 +87,8 @@ export default function App() {
       {updateAvailable && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
-          background: C.forest, color: C.cream, padding: '12px 16px',
+          background: C.forest, color: C.cream,
+          padding: 'calc(12px + env(safe-area-inset-top, 0px)) 16px 12px',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
           fontSize: '13px', fontWeight: 600, fontFamily: '"Manrope", system-ui, sans-serif',
           boxShadow: '0 4px 12px rgba(0,0,0,0.2)',

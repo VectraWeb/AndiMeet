@@ -14,7 +14,9 @@ export function useReservations(date) {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const data = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(r => r.source !== 'whatsapp_bot');
         setReservations(data);
       },
       (err) => { console.error('[Andi] Firestore error:', err); }
@@ -74,7 +76,10 @@ export function useAnalyticsReservations(date, showAnalytics, analyticsPeriod, a
         const results = await Promise.all(
           chunks.map(c => getDocs(query(resCol(), where('date', 'in', c))))
         );
-        const all = results.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const all = results.flatMap(snap => snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(r => r.source !== 'whatsapp_bot')
+        );
         if (!cancelled) setAnalyticsState({ period: key, month: analyticsMonth, data: all });
       } catch (err) {
         console.error('[Andi] Analytics fetch error:', err);

@@ -28,6 +28,18 @@ service cloud.firestore {
       allow delete: if isAuthenticated();
     }
 
+    // --- PEDIDOS DEL BOT ---
+    // Structure: pedidos/{pedidoId}
+    // Kept separate from reservations so an order never occupies a reservation slot.
+    match /pedidos/{pedidoId} {
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasAll(['customerName', 'date', 'service', 'pedidoEstado']);
+      allow read: if true;
+      allow update: if isAuthenticated()
+        && request.resource.data.keys().hasAny(['pedidoEstado', 'pedidoRechazoMotivo']);
+      allow delete: if isAuthenticated();
+    }
+
     // --- RESERVATIONS (LEGACY NESTED) — kept for backward compat, prefer flat ---
     match /reservations/{date}/items/{itemId} {
       allow read: if true;

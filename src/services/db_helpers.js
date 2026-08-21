@@ -22,6 +22,7 @@ export const subscribeToTableStates = (date, service, callback) => {
     (snapshot) => {
       const reservations = snapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter(r => r.source !== 'whatsapp_bot')
         .filter(r => r.tableId != null && !['cancelado', 'no_show', 'ausente'].includes(r.estado));
       callback(reservations);
     },

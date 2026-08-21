@@ -42,6 +42,9 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
 
   const [form, setForm] = useState({
     customerName: '',
+    phone: '',
+    modalidad: 'retiro',
+    direccion: '',
     details: '',
   });
   const [showCarta, setShowCarta] = useState(false);
@@ -50,7 +53,9 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
 
   // ── Validación ───────────────────────────────────────────────────────────
   const valid = form.customerName.trim().length >= 2
+    && form.phone.trim().length >= 6
     && form.details.trim().length >= 3
+    && (form.modalidad === 'retiro' || form.direccion.trim().length >= 4)
     && !submitting;
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -66,9 +71,12 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
       // 'service' se guarda vacío (la regla de Firestore exige el campo,
       // pero el horario lo confirma el restaurante).
       // Aparecerá en el panel Pedidos del staff (source: 'cliente_web').
-      await setDoc(doc(db, 'reservations', id), {
+      await setDoc(doc(db, 'pedidos', id), {
         id,
         customerName: form.customerName.trim(),
+        customerPhone: form.phone.trim(),
+        modalidad: form.modalidad,
+        direccion: form.modalidad === 'envio' ? form.direccion.trim() : '',
         service: '',
         time: '',
         date: todayISO(),
@@ -76,7 +84,6 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
         tipo: 'pedido',
         source: 'cliente_web',
         pedidoEstado: 'pendiente',
-        mesa_id: null,
         estado: 'pendiente',
         updatedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
@@ -85,7 +92,7 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
-        setForm({ customerName: '', details: '' });
+        setForm({ customerName: '', phone: '', modalidad: 'retiro', direccion: '', details: '' });
       }, 3000);
     } catch (e) {
       console.error('Error al crear el pedido:', e);
@@ -151,6 +158,17 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
           />
         </Field>
 
+        <Field label="Teléfono">
+          <input
+            type="tel"
+            inputMode="tel"
+            value={form.phone}
+            onChange={e => set('phone', e.target.value)}
+            placeholder="Ej: 11 5555 5555"
+            style={inp}
+          />
+        </Field>
+
         {/* Carta virtual */}
         <button onClick={() => setShowCarta(s => !s)} style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -183,6 +201,38 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
           />
         </Field>
 
+        <Field label="¿Retiro o envío?">
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[['retiro', 'Retiro en el local'], ['envio', 'Envío a domicilio']].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => set('modalidad', key)}
+                style={{
+                  flex: 1, padding: '12px 10px', borderRadius: '12px',
+                  border: `1.5px solid ${form.modalidad === key ? C.forest : C.creamDeep}`,
+                  background: form.modalidad === key ? `${C.forest}14` : C.white,
+                  color: form.modalidad === key ? C.forest : C.muted,
+                  fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        {form.modalidad === 'envio' && (
+          <Field label="Dirección de entrega">
+            <input
+              value={form.direccion}
+              onChange={e => set('direccion', e.target.value)}
+              placeholder="Calle y número"
+              style={inp}
+            />
+          </Field>
+        )}
+
         {error && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 14px', background: '#fef2f2', border: `1px solid ${C.terraSoft}`, borderRadius: '12px', fontSize: '13px', color: '#991b1b' }}>
             <AlertCircle size={16} />
@@ -207,7 +257,7 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
 
         {!valid && !submitting && (
           <div style={{ padding: '10px 14px', background: '#fef2f2', border: `1px solid ${C.terraSoft}`, borderRadius: '12px', fontSize: '13px', color: '#991b1b', lineHeight: '1.4' }}>
-            Completá tu nombre y el detalle del pedido para habilitar el envío.
+            Completá tu nombre, teléfono, el detalle del pedido{form.modalidad === 'envio' ? ' y la dirección de entrega' : ''} para habilitar el envío.
           </div>
         )}
       </div>

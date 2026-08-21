@@ -13,6 +13,10 @@ const inp = {
 };
 
 // ── Pedido card ─────────────────────────────────────────────────────────────
+const cleanPhone = (p) => String(p || '')
+  .replace(/@s\.whatsapp\.net$/i, '')
+  .replace(/[^0-9]/g, '');
+
 function PedidoCard({ p, onConfirm, onStartReject, rejectingId, rejectReason, onRejectReasonChange, onReject, onCancelReject, deleteConfirmId, onDeleteRequest, onDelete, onCancelDelete, onOpenStateModal }) {
   const estado = p.pedidoEstado || 'pendiente';
   const estadoCfg = PEDIDO_ESTADOS[estado] || PEDIDO_ESTADOS.pendiente;
@@ -39,7 +43,10 @@ function PedidoCard({ p, onConfirm, onStartReject, rejectingId, rejectReason, on
           </div>
           <div style={{ fontSize: '11px', color: C.muted, marginTop: '2px' }}>
             {p.time ? `${p.time} · ` : ''}
-            {p.tipo === 'pedido' ? (p.time ? 'Pedido' : 'Pedido · a confirmar') : `${p.partySize || '?'} personas`}
+            {p.modalidad === 'envio'
+              ? `Envío${p.direccion ? ` a ${p.direccion}` : ' a domicilio'}`
+              : 'Retiro en el local'}
+            {cleanPhone(p.customerPhone) ? ` · ${cleanPhone(p.customerPhone)}` : ''}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -240,7 +247,7 @@ export default function PedidosPanel({ date, service }) {
 
   useEffect(() => {
     const q = query(
-      collection(db, 'reservations'),
+      collection(db, 'pedidos'),
       where('date', '==', date),
       where('source', 'in', ['whatsapp_bot', 'cliente_web']),
     );
@@ -265,7 +272,7 @@ export default function PedidosPanel({ date, service }) {
 
   const confirmPedido = async (id) => {
     try {
-      await updateDoc(doc(db, 'reservations', id), { pedidoEstado: 'en_preparacion' });
+      await updateDoc(doc(db, 'pedidos', id), { pedidoEstado: 'en_preparacion' });
     } catch (err) {
       console.error('[Pedidos] Error confirmando:', err);
     }
@@ -274,7 +281,7 @@ export default function PedidosPanel({ date, service }) {
   const rejectPedido = async (id) => {
     if (!rejectReason.trim()) return;
     try {
-      await updateDoc(doc(db, 'reservations', id), {
+      await updateDoc(doc(db, 'pedidos', id), {
         pedidoEstado: 'cancelado',
         pedidoRechazoMotivo: rejectReason.trim(),
       });
@@ -287,7 +294,7 @@ export default function PedidosPanel({ date, service }) {
 
   const deletePedido = async (id) => {
     try {
-      await deleteDoc(doc(db, 'reservations', id));
+      await deleteDoc(doc(db, 'pedidos', id));
       setDeleteConfirmId(null);
     } catch (err) {
       console.error('[Pedidos] Error borrando:', err);
@@ -340,7 +347,7 @@ export default function PedidosPanel({ date, service }) {
 
 async function updatePedidoEstado(id, newEstado) {
   try {
-    await updateDoc(doc(db, 'reservations', id), { pedidoEstado: newEstado });
+    await updateDoc(doc(db, 'pedidos', id), { pedidoEstado: newEstado });
   } catch (err) {
     console.error('[Pedidos] Error updating estado:', err);
   }

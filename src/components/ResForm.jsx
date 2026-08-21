@@ -48,6 +48,7 @@ export default function ResForm({ onStaffAccess, onBack }) {
 
   const [form, setForm] = useState({
     customerName: '',
+    phone: '',
     partySize: 2,
     time: defaultServiceTime(),
     notes: '',
@@ -72,6 +73,7 @@ export default function ResForm({ onStaffAccess, onBack }) {
 
   // ── Validación ───────────────────────────────────────────────────────────
   const valid = form.customerName.trim().length >= 2
+    && form.phone.trim().length >= 6
     && form.time
     && service
     && form.partySize > 0
@@ -93,6 +95,7 @@ export default function ResForm({ onStaffAccess, onBack }) {
       await setDoc(resDocRef(id), {
         id,
         customerName: form.customerName.trim(),
+        phone: form.phone.trim(),
         partySize: form.partySize,
         staffId: null,
         staffName: '',
@@ -110,7 +113,7 @@ export default function ResForm({ onStaffAccess, onBack }) {
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
-        setForm({ customerName: '', partySize: 2, time: defaultServiceTime(), notes: '' });
+        setForm({ customerName: '', phone: '', partySize: 2, time: defaultServiceTime(), notes: '' });
       }, 3000);
     } catch (e) {
       console.error('Error al crear la reserva:', e);
@@ -173,6 +176,17 @@ export default function ResForm({ onStaffAccess, onBack }) {
             placeholder="Tu nombre"
             style={inp}
             autoFocus
+          />
+        </Field>
+
+        <Field label="Teléfono">
+          <input
+            type="tel"
+            inputMode="tel"
+            value={form.phone}
+            onChange={e => set('phone', e.target.value)}
+            placeholder="Ej: 11 5555 5555"
+            style={inp}
           />
         </Field>
 

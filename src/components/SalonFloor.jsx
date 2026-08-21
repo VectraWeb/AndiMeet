@@ -223,6 +223,7 @@ const SalonFloor = React.memo(function SalonFloor({
   const dragRef = useRef(null);
   const sectorDragRef = useRef(null);
   const lastFocusKeyRef = useRef(0);
+  const focusTimerRef = useRef(null);
 
   const [fitScale, setFitScale] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -321,11 +322,17 @@ const SalonFloor = React.memo(function SalonFloor({
     ny = Math.max(-limY, Math.min(limY, ny));
     setOffset({ x: nx, y: ny });
     setZoom(targetZoom);
+    // Volver al plano general a los 5 segundos (evita quedar "atrapado" en zoom)
+    if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+    focusTimerRef.current = setTimeout(() => {
+      resetView();
+      focusTimerRef.current = null;
+    }, 5000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusRequest, tables, positions]);
 
   // Wheel zoom (PC) — listener no-pasivo para poder cancelar el scroll
-  useEffect(() => {
+   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const onWheel = (e) => {
@@ -340,6 +347,13 @@ const SalonFloor = React.memo(function SalonFloor({
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, [isEditing, zoomAt]);
+
+  // Limpiar el timer de auto-reset al desmontar
+  useEffect(() => {
+    return () => {
+      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (tables.length > 0 && Object.keys(positions).length === 0) {

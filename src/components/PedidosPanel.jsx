@@ -249,7 +249,7 @@ export default function PedidosPanel({ date, service }) {
     const q = query(
       collection(db, 'pedidos'),
       where('date', '==', date),
-      where('source', 'in', ['whatsapp_bot', 'cliente_web']),
+      where('source', 'in', ['whatsapp_bot', 'cliente_web', 'staff']),
     );
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -321,7 +321,7 @@ export default function PedidosPanel({ date, service }) {
   ));
 
   return (
-    <div style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div className="fab-safe" style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <AccordionSection title="Todos" count={allPedidos.length} expanded={expandedSection === 'todos'} onToggle={() => toggleSection('todos')} accentColor={C.forest}>
         {renderPedidos(allPedidos)}
       </AccordionSection>

@@ -24,7 +24,7 @@ export default function ResModal({ editing, preTable, tables, service, tableStat
   // Form de pedido (staff)
   const [pedidoForm, setPedidoForm] = useState({
     customerName: '', phone: '', modalidad: 'retiro', direccion: '',
-    details: '', staffId: '',
+    details: '',
   });
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -201,17 +201,6 @@ export default function ResModal({ editing, preTable, tables, service, tableStat
               placeholder="Calle y número" style={inp} />
           </Field>
         )}
-
-        {staff.length > 0 && (
-          <Field label="Mozo asignado">
-            <select value={pedidoForm.staffId} onChange={e => setPedido('staffId', e.target.value)} style={inp}>
-              <option value="">— sin asignar —</option>
-              {staff.filter(s => s.active !== false).map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </Field>
-        )}
       </div>
       </>
       )}
@@ -254,8 +243,7 @@ export default function ResModal({ editing, preTable, tables, service, tableStat
         ) : (
           <button onClick={() => {
             if (!validPedido) return;
-            const staffMember = staff.find(s => s.id === pedidoForm.staffId);
-            onSavePedido({ ...pedidoForm, staffName: staffMember?.name || '' });
+            onSavePedido({ ...pedidoForm });
           }} style={{
             flex: 1, padding: '14px', background: validPedido ? C.terra : C.creamDeep,
             border: 'none', borderRadius: '12px', cursor: validPedido ? 'pointer' : 'not-allowed',

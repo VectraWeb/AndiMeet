@@ -499,8 +499,6 @@ export default function StaffDashboard({ onLogout }) {
         estado: 'pendiente',
         service,
         date,
-        staffId: data.staffId || '',
-        staffName: data.staffName || '',
         updatedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
       });
@@ -660,7 +658,7 @@ export default function StaffDashboard({ onLogout }) {
         };
 
         return (
-          <div style={{ padding: '0 16px 24px' }}>
+          <div className="fab-safe" style={{ padding: '0 16px 24px' }}>
             {/* Lista de mozos: un toque abre sus mesas, otro toque las cierra */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '4px' }}>
               {/* Acordeón de reservas */}

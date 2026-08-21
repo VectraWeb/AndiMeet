@@ -216,6 +216,9 @@ input[type="range"]::-moz-range-thumb {
   .main-container {
     padding-bottom: calc(230px + env(safe-area-inset-bottom, 0px)) !important;
   }
+  .fab-safe {
+    padding-right: 84px !important;
+  }
 }
 @media (min-width: 481px) {
   .header-menu-btn {

@@ -28,7 +28,7 @@ import {
   C, LIVE_STATES, SERVICES, DEFAULT_CONFIG,
   t2m, genSlots, buildTables, todayISO,
   detectService, computeStateDurations,
-  getAssignedTables,
+  getAssignedTables, notificarN8N,
 } from '../utils';
 
 // ─── Firestore helpers ───────────────────────────────────────────────────────
@@ -97,10 +97,36 @@ export default function StaffDashboard({ onLogout }) {
   const slots = useMemo(() => genSlots(service), [service]);
 
   // Posiciones del salón: suscripción única compartida con SalonFloor
-  const { positions, setPositions, groups, setGroups, saveLayout } = useSalonLayout();
+  const { positions, setPositions, groups, setGroups, saveLayout, groupOwners, saveGroupOwner } = useSalonLayout();
 
   // Números elegidos por cada mozo mapeados a las mesas físicas de su sector.
   const { tableNumByTable, ownerByTable, mozoTableIds } = useMozoTableNumbers(tables, staff, sectors, positions);
+
+  // Grupos de mesas unidas: número único para todas sus mesas y el mozo
+  // elegido cuando el grupo cruza sectores.
+  const { groupNumByTable, groupOwnerByTable } = useMemo(() => {
+    const nums = {};
+    const owners = {};
+    for (const g of groups || []) {
+      const key = [...g].sort().join('|');
+      const chosen = (groupOwners && groupOwners[key]) || null;
+      let num = '';
+      if (chosen) {
+        for (const id of g) {
+          if (ownerByTable[id] === chosen && tableNumByTable[id]) {
+            num = tableNumByTable[id];
+            break;
+          }
+        }
+      }
+      if (!num) num = g.map(id => tableNumByTable[id]).find(n => n && n !== '') || '';
+      for (const id of g) {
+        if (num) nums[id] = num;
+        if (chosen) owners[id] = chosen;
+      }
+    }
+    return { groupNumByTable: nums, groupOwnerByTable: owners };
+  }, [groups, groupOwners, ownerByTable, tableNumByTable]);
 
   // ── Loading state ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -156,7 +182,8 @@ export default function StaffDashboard({ onLogout }) {
     const { _oldMesaRef, _prevResId, _prevMesaRef, ...cleanData } = data;
     // La mesa toma el número que el mozo eligió para ella: el plano se adapta
     // al mozo, y la reserva queda vinculada a ese número, no al físico.
-    const mesaNum = cleanData.tableId ? tableNumByTable[cleanData.tableId] : null;
+    // Si la mesa está unida a otras, usa el número único del grupo.
+    const mesaNum = cleanData.tableId ? (groupNumByTable[cleanData.tableId] || tableNumByTable[cleanData.tableId]) : null;
 
     if (!cleanData.tableId) {
       await setDoc(resDocRef(id), {
@@ -200,7 +227,13 @@ export default function StaffDashboard({ onLogout }) {
           createdAt: cleanData.createdAt || serverTimestamp(),
         });
       });
-  }, [date, tableNumByTable]);
+
+      notificarN8N({
+        evento: 'solicitud_confirmada',
+        document_id: id,
+        tipo: 'reserva',
+      });
+  }, [date, tableNumByTable, groupNumByTable]);
 
   const deleteRes = useCallback(async (resData) => {
     try {
@@ -844,6 +877,10 @@ export default function StaffDashboard({ onLogout }) {
           onTableClick={handleTableClick}
           highlightTableId={highlightTableId}
           focusRequest={focusRequest}
+          ownerByTable={ownerByTable}
+          staff={staff}
+          groupOwners={groupOwners}
+          onChooseGroupOwner={saveGroupOwner}
         />
       )}
 
@@ -918,8 +955,8 @@ export default function StaffDashboard({ onLogout }) {
           service={service}
           tableStatus={tableStatus}
           staff={staff}
-          tableNums={tableNumByTable}
-          ownerByTable={ownerByTable}
+          tableNums={{ ...tableNumByTable, ...groupNumByTable }}
+          ownerByTable={{ ...ownerByTable, ...groupOwnerByTable }}
           mozoTableIds={mozoTableIds}
           onSave={handleSave}
           onSavePedido={savePedido}

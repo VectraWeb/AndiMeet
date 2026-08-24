@@ -206,13 +206,26 @@ export const defaultServiceTime = () => {
 
 // ─── Utilidad N8N ────────────────────────────────────────────────────────────
 const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || '';
+const N8N_WEBHOOK_SECRET = import.meta.env.VITE_N8N_WEBHOOK_SECRET || '';
 export const notificarN8N = (datos) => {
-  if (!N8N_WEBHOOK_URL) return;
+  if (!N8N_WEBHOOK_URL) {
+    console.warn('[Andi] VITE_N8N_WEBHOOK_URL no configurada: no se notificará a n8n.', datos);
+    return;
+  }
+  if (!N8N_WEBHOOK_SECRET) {
+    console.warn('[Andi] VITE_N8N_WEBHOOK_SECRET no configurada: el webhook de n8n rechazará el aviso (403) si exige header. Seteala al mismo valor que la credencial "Andi webhook secret".', datos);
+  }
+  const headers = { 'Content-Type': 'application/json' };
+  if (N8N_WEBHOOK_SECRET) headers['x-andi-secret'] = N8N_WEBHOOK_SECRET;
   fetch(N8N_WEBHOOK_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(datos),
-  }).catch(err => console.error('[Andi] Error silencioso al notificar a n8n:', err));
+  })
+    .then(res => {
+      if (!res.ok) console.warn(`[Andi] n8n respondió ${res.status} para ${datos.evento}:`, datos);
+    })
+    .catch(err => console.error('[Andi] Error silencioso al notificar a n8n:', err));
 };
 
 // ─── Calcula duración (min) de cada estado desde stateLog ─────────────────

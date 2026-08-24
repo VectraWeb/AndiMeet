@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { C, PEDIDO_ESTADOS } from '../utils';
+import { C, PEDIDO_ESTADOS, notificarN8N } from '../utils';
 import { XCircle, MessageCircle, Check, AlertCircle, Trash2 } from 'lucide-react';
 import PedidoStateModal from './PedidoStateModal';
+import PedidoConfirmModal from './PedidoConfirmModal';
 
 const inp = {
   width: '100%', padding: '10px 12px', fontSize: '13px',
@@ -132,7 +133,7 @@ function PedidoCard({ p, onConfirm, onStartReject, rejectingId, rejectReason, on
       {/* Acciones pendientes */}
       {isPending && rejectingId !== p.id && (
         <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-          <button onClick={(e) => { e.stopPropagation(); onConfirm(p.id); }} style={{
+          <button onClick={(e) => { e.stopPropagation(); onConfirm(p); }} style={{
             flex: 1, padding: '7px 10px', borderRadius: '8px', border: 'none',
             background: C.forest, cursor: 'pointer', fontSize: '11px', fontWeight: 600,
             color: C.cream, fontFamily: 'inherit',
@@ -244,6 +245,7 @@ export default function PedidosPanel({ date, service }) {
   const [rejectReason, setRejectReason] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [stateModalPedido, setStateModalPedido] = useState(null);
+  const [confirmTarget, setConfirmTarget] = useState(null);
 
   useEffect(() => {
     const q = query(
@@ -270,9 +272,24 @@ export default function PedidosPanel({ date, service }) {
     setDeleteConfirmId(null);
   };
 
-  const confirmPedido = async (id) => {
+  const handleConfirmTime = async (pedido, { prepMin, envioMin, totalMin }) => {
     try {
-      await updateDoc(doc(db, 'pedidos', id), { pedidoEstado: 'en_preparacion' });
+      await updateDoc(doc(db, 'pedidos', pedido.id), {
+        pedidoEstado: 'en_preparacion',
+        tiempoPreparacionMin: prepMin,
+        tiempoEnvioMin: envioMin,
+        tiempoTotalMin: totalMin,
+        confirmadoAt: serverTimestamp(),
+      });
+      notificarN8N({
+        evento: 'solicitud_confirmada',
+        document_id: pedido.id,
+        tipo: 'pedido',
+        tiempo_preparacion_min: prepMin,
+        tiempo_envio_min: envioMin,
+        tiempo_total_min: totalMin,
+      });
+      setConfirmTarget(null);
     } catch (err) {
       console.error('[Pedidos] Error confirmando:', err);
     }
@@ -305,7 +322,7 @@ export default function PedidosPanel({ date, service }) {
     <PedidoCard
       key={p.id}
       p={p}
-      onConfirm={confirmPedido}
+      onConfirm={setConfirmTarget}
       onStartReject={(id) => { setRejectingId(id); setRejectReason(''); }}
       rejectingId={rejectingId}
       rejectReason={rejectReason}
@@ -337,8 +354,23 @@ export default function PedidosPanel({ date, service }) {
       {stateModalPedido && (
         <PedidoStateModal
           pedido={stateModalPedido}
-          onSelect={(key) => { updatePedidoEstado(stateModalPedido.id, key); setStateModalPedido(null); }}
+          onSelect={(key) => {
+            if (key === 'en_preparacion') {
+              setConfirmTarget(stateModalPedido);
+            } else {
+              updatePedidoEstado(stateModalPedido.id, key);
+            }
+            setStateModalPedido(null);
+          }}
           onClose={() => setStateModalPedido(null)}
+        />
+      )}
+
+      {confirmTarget && (
+        <PedidoConfirmModal
+          pedido={confirmTarget}
+          onConfirm={(times) => handleConfirmTime(confirmTarget, times)}
+          onClose={() => setConfirmTarget(null)}
         />
       )}
     </div>

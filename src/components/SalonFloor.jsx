@@ -129,8 +129,7 @@ const TableShape = React.memo(function TableShape({
   return (
     <div
       data-table-id={t.id}
-      onPointerDown={(e) => onDragStart(t.id, e)}
-      onTouchStart={(e) => { if (isEditing) onDragStart(t.id, e); }}
+      onPointerDown={(e) => { if (isEditing) onDragStart(t.id, e); }}
       onClick={() => {
         if (!isEditing && onClick) onClick();
       }}
@@ -217,8 +216,10 @@ const SalonFloor = React.memo(function SalonFloor({
   isEditing, onToggleEdit,
   sectors, isEditingSectors, onToggleEditSectors, onSaveSectors,
   highlightTableId, focusRequest,
+  ownerByTable, staff, groupOwners, onChooseGroupOwner,
 }) {
   const [dirty, setDirty] = useState(false);
+  const [pendingGroupChoice, setPendingGroupChoice] = useState(null);
   const containerRef = useRef(null);
   const dragRef = useRef(null);
   const sectorDragRef = useRef(null);
@@ -387,8 +388,8 @@ const SalonFloor = React.memo(function SalonFloor({
     const startPositions = {};
     for (const id of block) startPositions[id] = positions[id] || { x: 0, y: 0 };
 
-    const startX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
-    const startY = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+    const startX = e.clientX ?? 0;
+    const startY = e.clientY ?? 0;
 
     el.style.cursor = 'grabbing';
     el.style.zIndex = '100';
@@ -399,12 +400,12 @@ const SalonFloor = React.memo(function SalonFloor({
     let rafId = null;
 
     const onMove = (ev) => {
-      const cx = ev.clientX ?? ev.touches?.[0]?.clientX ?? 0;
-      const cy = ev.clientY ?? ev.touches?.[0]?.clientY ?? 0;
+      const cx = ev.clientX ?? 0;
+      const cy = ev.clientY ?? 0;
       const rawDx = (cx - startX) / effectiveScale;
       const rawDy = (cy - startY) / effectiveScale;
-      const dx = isMobile ? -rawDy : rawDx;
-      const dy = isMobile ? rawDx : rawDy;
+      const dx = isMobile ? rawDy : rawDx;
+      const dy = isMobile ? -rawDx : rawDy;
 
       // Arrastre libre: las mesas pueden superponerse (solo se limitan al lienzo)
       const resolved = {};
@@ -431,9 +432,8 @@ const SalonFloor = React.memo(function SalonFloor({
     const onUp = () => {
       if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('touchmove', onMove);
       window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('touchend', onUp);
+      window.removeEventListener('pointercancel', onUp);
       el.style.pointerEvents = '';
       el.style.zIndex = '';
       el.style.willChange = '';
@@ -466,10 +466,30 @@ const SalonFloor = React.memo(function SalonFloor({
             final[id] = { x: final[id].x + snapDeltaX, y: final[id].y + snapDeltaY };
           }
           const otherBlock = (groups || []).find(g => g.includes(best.targetId)) || [best.targetId];
+          const mergedGroup = [...block, ...otherBlock];
           setGroups(prev => [
             ...prev.filter(g => !block.some(id => g.includes(id)) && !otherBlock.some(id => g.includes(id))),
-            [...block, ...otherBlock],
+            mergedGroup,
           ]);
+
+          // Si el grupo cruza sectores y no hay mozo elegido, preguntar
+          // al instante (sin salir del modo edición).
+          const ownerIds = [...new Set(mergedGroup.map(id => ownerByTable?.[id]).filter(Boolean))];
+          const gKey = [...mergedGroup].sort().join('|');
+          if (ownerIds.length > 1 && !(groupOwners && groupOwners[gKey])) {
+            setPendingGroupChoice({
+              key: gKey,
+              owners: ownerIds.map(oid => {
+                const memberId = mergedGroup.find(id => ownerByTable?.[id] === oid);
+                return {
+                  id: oid,
+                  name: (staff || []).find(s => s.id === oid)?.name || 'Mozo',
+                  num: memberId ? (tableNums?.[memberId] || '') : '',
+                };
+              }),
+              afterChoose: null,
+            });
+          }
         }
 
         setPositions(prev => ({ ...prev, ...final }));
@@ -479,10 +499,9 @@ const SalonFloor = React.memo(function SalonFloor({
     };
 
     window.addEventListener('pointermove', onMove, { passive: true });
-    window.addEventListener('touchmove', onMove, { passive: true });
     window.addEventListener('pointerup', onUp);
-    window.addEventListener('touchend', onUp);
-  }, [isEditing, positions, tables, groups, effectiveScale, isMobile, setPositions, setGroups, tableRect, closestSnap]);
+    window.addEventListener('pointercancel', onUp);
+  }, [isEditing, positions, tables, groups, effectiveScale, isMobile, setPositions, setGroups, tableRect, closestSnap, ownerByTable, tableNums, staff, groupOwners]);
 
   const handleTouchStart = useCallback((e) => {
     if (isEditing) return;
@@ -642,19 +661,19 @@ const SalonFloor = React.memo(function SalonFloor({
     e.stopPropagation();
     const sector = (sectors || []).find(s => s.id === sectorId);
     if (!sector) return;
-    const startX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
-    const startY = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+    const startX = e.clientX ?? 0;
+    const startY = e.clientY ?? 0;
     const orig = { x: sector.x, y: sector.y, w: sector.w, h: sector.h };
 
     let rafId = null;
 
     const onMove = (ev) => {
-      const cx = ev.clientX ?? ev.touches?.[0]?.clientX ?? 0;
-      const cy = ev.clientY ?? ev.touches?.[0]?.clientY ?? 0;
+      const cx = ev.clientX ?? 0;
+      const cy = ev.clientY ?? 0;
       const rawDx = (cx - startX) / effectiveScale;
       const rawDy = (cy - startY) / effectiveScale;
-      const dx = isMobile ? -rawDy : rawDx;
-      const dy = isMobile ? rawDx : rawDy;
+      const dx = isMobile ? rawDy : rawDx;
+      const dy = isMobile ? -rawDx : rawDy;
       const others = sectors.filter(s => s.id !== sectorId);
       const resolved = resolveSectorDrag(orig.x + dx, orig.y + dy, orig.w, orig.h, others);
       if (rafId) cancelAnimationFrame(rafId);
@@ -671,9 +690,8 @@ const SalonFloor = React.memo(function SalonFloor({
     const onUp = () => {
       if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('touchmove', onMove);
       window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('touchend', onUp);
+      window.removeEventListener('pointercancel', onUp);
       if (sectorDragRef.current && sectorDragRef.current.sectorId === sectorId && onSaveSectors) {
         const d = sectorDragRef.current;
         const updated = sectors.map(s => s.id === sectorId ? { ...s, x: orig.x + d.dx, y: orig.y + d.dy } : s);
@@ -683,9 +701,8 @@ const SalonFloor = React.memo(function SalonFloor({
     };
 
     window.addEventListener('pointermove', onMove, { passive: true });
-    window.addEventListener('touchmove', onMove, { passive: true });
     window.addEventListener('pointerup', onUp);
-    window.addEventListener('touchend', onUp);
+    window.addEventListener('pointercancel', onUp);
   }, [isEditingSectors, sectors, effectiveScale, onSaveSectors, isMobile]);
 
   const handleSectorResize = useCallback((sectorId, handle, e) => {
@@ -694,19 +711,19 @@ const SalonFloor = React.memo(function SalonFloor({
     e.stopPropagation();
     const sector = (sectors || []).find(s => s.id === sectorId);
     if (!sector) return;
-    const startX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
-    const startY = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+    const startX = e.clientX ?? 0;
+    const startY = e.clientY ?? 0;
     const orig = { x: sector.x, y: sector.y, w: sector.w, h: sector.h };
 
     let rafId = null;
 
     const onMove = (ev) => {
-      const cx = ev.clientX ?? ev.touches?.[0]?.clientX ?? 0;
-      const cy = ev.clientY ?? ev.touches?.[0]?.clientY ?? 0;
+      const cx = ev.clientX ?? 0;
+      const cy = ev.clientY ?? 0;
       const rawDx = (cx - startX) / effectiveScale;
       const rawDy = (cy - startY) / effectiveScale;
-      const dx = isMobile ? -rawDy : rawDx;
-      const dy = isMobile ? rawDx : rawDy;
+      const dx = isMobile ? rawDy : rawDx;
+      const dy = isMobile ? -rawDx : rawDy;
       let { x, y, w, h } = orig;
 
       if (handle.includes('e')) w = Math.max(80, orig.w + dx);
@@ -734,9 +751,8 @@ const SalonFloor = React.memo(function SalonFloor({
     const onUp = () => {
       if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('touchmove', onMove);
       window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('touchend', onUp);
+      window.removeEventListener('pointercancel', onUp);
       if (sectorDragRef.current && sectorDragRef.current.id === sectorId && onSaveSectors) {
         const d = sectorDragRef.current;
         const updated = sectors.map(s => s.id === sectorId ? { ...s, x: d.x, y: d.y, w: d.w, h: d.h } : s);
@@ -746,10 +762,21 @@ const SalonFloor = React.memo(function SalonFloor({
     };
 
     window.addEventListener('pointermove', onMove, { passive: true });
-    window.addEventListener('touchmove', onMove, { passive: true });
     window.addEventListener('pointerup', onUp);
-    window.addEventListener('touchend', onUp);
+    window.addEventListener('pointercancel', onUp);
   }, [isEditingSectors, sectors, effectiveScale, onSaveSectors, isMobile]);
+
+  // "Listo" sale del modo edición guardando los cambios pendientes,
+  // así un snapshot posterior no revierte las uniones hechas.
+  const handleFinishEdit = () => {
+    if (dirty) {
+      handleSave()
+        .catch(() => {})
+        .finally(() => onToggleEdit());
+    } else {
+      onToggleEdit();
+    }
+  };
 
   const handleReset = useCallback(() => {
     setPositions(defaultPositions(tables));
@@ -787,6 +814,81 @@ const SalonFloor = React.memo(function SalonFloor({
     return out;
   }, [tables, positions, groups]);
 
+  // ── Info por grupo: número único, mozos dueños y suma de comensales ──
+  // Todas las mesas unidas se llaman por el mismo número. Si el grupo cruza
+  // sectores (2+ mozos) se puede elegir qué mozo conserva la mesa.
+  const groupInfo = useMemo(() => {
+    const map = new Map();
+    const FREE = { status: 'free' };
+    for (const g of groups || []) {
+      const key = [...g].sort().join('|');
+      const owners = [];
+      for (const id of g) {
+        const oid = ownerByTable ? ownerByTable[id] : null;
+        if (!oid || owners.some(o => o.id === oid)) continue;
+        const num = (tableNums && tableNums[id]) || '';
+        const name = (staff || []).find(s => s.id === oid)?.name || 'Mozo';
+        owners.push({ id: oid, name, num });
+      }
+      const chosenOwnerId = (groupOwners && groupOwners[key]) || null;
+      let displayNum = '';
+      if (chosenOwnerId) {
+        const o = owners.find(o => o.id === chosenOwnerId);
+        if (o && o.num) displayNum = o.num;
+      }
+      if (!displayNum) {
+        displayNum = g.map(id => (tableNums ? tableNums[id] : '')).find(n => n && n !== '') || '';
+      }
+      let totalParty = 0;
+      let groupStatus = null;
+      for (const id of g) {
+        const st = tableStatus(id) || FREE;
+        totalParty += st.res?.partySize || 0;
+        if (!groupStatus) groupStatus = st;
+        else if (groupStatus.status === 'free' && st.status !== 'free') groupStatus = st;
+      }
+      map.set(g, {
+        key, owners, chosenOwnerId, displayNum, totalParty, groupStatus,
+        multiOwner: owners.length > 1,
+      });
+    }
+    return map;
+  }, [groups, ownerByTable, tableNums, staff, groupOwners, tableStatus]);
+
+  // Click en un grupo unido: si cruza sectores y no hay mozo elegido,
+  // primero se pregunta qué mozo conserva la mesa.
+  const handleGroupClick = (group) => {
+    const info = groupInfo.get(group);
+    if (!info) return;
+    const proceed = (ownerId) => {
+      const cap = group.reduce((a, id) => a + ((tables.find(x => x.id === id)?.capacity) || 0), 0);
+      const primary = tables.find(t => t.id === group[0]) || tables.find(t => group.includes(t.id));
+      let s = info.groupStatus || { status: 'free' };
+      if (info.totalParty > 0 && s.res) {
+        s = { ...s, res: { ...s.res, partySize: info.totalParty } };
+      }
+      let num = info.displayNum;
+      if (ownerId) {
+        const o = info.owners.find(o => o.id === ownerId);
+        if (o && o.num) num = o.num;
+      }
+      onTableClick({ ...primary, capacity: cap, joinedIds: group, groupNum: num }, s);
+    };
+    if (info.multiOwner && !info.chosenOwnerId) {
+      setPendingGroupChoice({ key: info.key, owners: info.owners, afterChoose: proceed });
+    } else {
+      proceed(info.chosenOwnerId || null);
+    }
+  };
+
+  const handleGroupOwnerChoose = (ownerId) => {
+    if (!pendingGroupChoice) return;
+    const { key, afterChoose } = pendingGroupChoice;
+    setPendingGroupChoice(null);
+    if (onChooseGroupOwner) onChooseGroupOwner(key, ownerId);
+    if (afterChoose) afterChoose(ownerId);
+  };
+
   return (
     <div style={{ padding: '0 4px 12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', padding: '0 4px' }}>
@@ -805,7 +907,7 @@ const SalonFloor = React.memo(function SalonFloor({
           }}>
             {isEditingSectors ? 'Listo' : 'Sectores'}
           </button>
-          <button onClick={onToggleEdit} style={{
+          <button onClick={handleFinishEdit} style={{
             background: isEditing ? PALETTE.terra : PALETTE.creamDeep,
             color: isEditing ? '#fff' : PALETTE.muted,
             border: 'none', borderRadius: '8px', padding: '5px 10px',
@@ -969,8 +1071,7 @@ const SalonFloor = React.memo(function SalonFloor({
               <div
                 key={sec.id}
                 data-sector-id={sec.id}
-                onPointerDown={(e) => handleSectorDragStart(sec.id, e)}
-                onTouchStart={(e) => { if (isEditingSectors) handleSectorDragStart(sec.id, e); }}
+                onPointerDown={(e) => { if (isEditingSectors) handleSectorDragStart(sec.id, e); }}
                 style={{
                   position: 'absolute',
                   left: sec.x, top: sec.y, width: sec.w, height: sec.h,
@@ -1010,7 +1111,6 @@ const SalonFloor = React.memo(function SalonFloor({
                       <div
                         key={h.key}
                         onPointerDown={(e) => handleSectorResize(sec.id, h.key, e)}
-                        onTouchStart={(e) => handleSectorResize(sec.id, h.key, e)}
                         style={hStyle}
                       />
                     );
@@ -1033,6 +1133,7 @@ const SalonFloor = React.memo(function SalonFloor({
             const maxX = Math.max(...rects.map(r => r.x + r.w));
             const maxY = Math.max(...rects.map(r => r.y + r.h));
             const cap = members.reduce((a, t) => a + (t.capacity || 0), 0);
+            const info = groupInfo.get(g) || null;
             const groupRect = {
               left: minX - 6, top: minY - 6,
               width: maxX - minX + 12, height: maxY - minY + 12,
@@ -1043,17 +1144,37 @@ const SalonFloor = React.memo(function SalonFloor({
                 left: groupRect.left, top: groupRect.top,
                 width: groupRect.width, height: groupRect.height,
                 border: '2px dashed rgba(31,58,46,0.3)',
-                borderRadius: '16px', pointerEvents: 'none', zIndex: isEditingSectors ? 1 : 5,
+                borderRadius: '16px', pointerEvents: 'none', zIndex: isEditingSectors ? 1 : 15,
               }}>
-                {/* Capacidad total del grupo */}
+                {/* Comensales totales del grupo (o capacidad si está libre) */}
                 <span style={{
                   position: 'absolute', top: '-9px', left: '10px',
                   background: PALETTE.forest, color: PALETTE.cream,
                   fontSize: '10px', fontWeight: 700, padding: '2px 8px',
                   borderRadius: '8px', lineHeight: 1.4,
                 }}>
-                  {cap}p
+                  {info && info.totalParty > 0 ? `${info.totalParty} comensales` : `${cap}p`}
                 </span>
+                {!isEditingSectors && info && info.multiOwner && (
+                  <button
+                    title="Elegir mozo para la mesa unida"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      setPendingGroupChoice({ key: info.key, owners: info.owners, afterChoose: null });
+                    }}
+                    style={{
+                      position: 'absolute', bottom: '-10px', left: '10px',
+                      background: info.chosenOwnerId ? PALETTE.forest : PALETTE.soon,
+                      color: '#fff', border: '2px solid #fff', borderRadius: '8px',
+                      padding: '2px 8px', fontSize: '9px', fontWeight: 700,
+                      cursor: 'pointer', pointerEvents: 'auto', fontFamily: 'inherit',
+                    }}
+                  >
+                    {info.chosenOwnerId
+                      ? (info.owners.find(o => o.id === info.chosenOwnerId)?.name || 'Mozo')
+                      : 'Elegir mozo'}
+                  </button>
+                )}
                 {isEditing && (
                   <button
                     title="Separar mesas"
@@ -1075,6 +1196,7 @@ const SalonFloor = React.memo(function SalonFloor({
           {tables.map((t) => {
             const pos = positions[t.id] || { x: 0, y: 0 };
             const group = (groups || []).find(g => g.includes(t.id)) || null;
+            const info = group ? groupInfo.get(group) : null;
             let s = tableStatus(t.id) || { status: 'free' };
             // Si el grupo tiene reserva (mesa primaria ocupada), todas las
             // mesas unidas comparten ese estado visualmente.
@@ -1090,10 +1212,7 @@ const SalonFloor = React.memo(function SalonFloor({
             }) || null;
 
             const handleClick = group
-              ? () => {
-                  const cap = group.reduce((a, id) => a + ((tables.find(x => x.id === id)?.capacity) || 0), 0);
-                  onTableClick({ ...t, capacity: cap, joinedIds: group }, s);
-                }
+              ? () => handleGroupClick(group)
               : () => onTableClick(t, s);
 
             return (
@@ -1105,7 +1224,7 @@ const SalonFloor = React.memo(function SalonFloor({
                 s={s}
                 timer={timer}
                 sectorColor={secFor ? secFor.color : null}
-                tableNum={tableNums[t.id] || ''}
+                tableNum={info ? info.displayNum : tableNums[t.id] || ''}
                 isEditing={isEditing}
                 isEditingSectors={isEditingSectors}
                 isMobile={isMobile}
@@ -1117,6 +1236,51 @@ const SalonFloor = React.memo(function SalonFloor({
           })}
         </div>
       </div>
+
+      {/* ── ELEGIR MOZO PARA MESA UNIDA (cruza 2 sectores) ── */}
+      {pendingGroupChoice && (
+        <>
+          <div onClick={() => setPendingGroupChoice(null)} style={{
+            position: 'fixed', inset: 0, background: 'rgba(31,58,46,0.5)',
+            zIndex: 390, backdropFilter: 'blur(3px)',
+          }} />
+          <div style={{
+            position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+            width: 'min(92vw, 340px)', background: PALETTE.cream, borderRadius: '20px',
+            padding: '22px 18px 14px', zIndex: 400,
+            boxShadow: '0 16px 48px rgba(0,0,0,0.3)', animation: 'modalIn 0.2s ease-out',
+          }}>
+            <h4 style={{
+              margin: '0 0 6px', fontFamily: '"Fraunces", serif', fontStyle: 'italic',
+              fontSize: '18px', fontWeight: 600, color: PALETTE.forest,
+            }}>
+              Mesa en 2 sectores
+            </h4>
+            <p style={{ margin: '0 0 14px', fontSize: '12px', color: PALETTE.muted, lineHeight: 1.5 }}>
+              Elegí qué mozo conserva esta mesa unida:
+            </p>
+            {(pendingGroupChoice.owners || []).map(o => (
+              <button key={o.id} onClick={() => handleGroupOwnerChoose(o.id)} style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 14px', marginBottom: '8px', background: PALETTE.white,
+                border: `1.5px solid ${PALETTE.creamDeep}`, borderRadius: '12px',
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: PALETTE.espresso }}>{o.name}</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: PALETTE.terra }}>
+                  {o.num ? `Mesa ${o.num}` : 'Sin número'}
+                </span>
+              </button>
+            ))}
+            <button onClick={() => setPendingGroupChoice(null)} style={{
+              width: '100%', padding: '10px', background: 'transparent', border: 'none',
+              cursor: 'pointer', color: PALETTE.muted, fontSize: '12px', fontFamily: 'inherit',
+            }}>
+              Cerrar
+            </button>
+          </div>
+        </>
+      )}
 
       {/* ── LEYENDA DE COLORES ── */}
       {highlightTableId && (

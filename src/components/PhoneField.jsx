@@ -3,16 +3,16 @@ import { inp } from '../utils';
 import { Field } from './ui';
 
 const PAISES = [
-  { code: '54', name: 'Argentina' },
-  { code: '598', name: 'Uruguay' },
-  { code: '595', name: 'Paraguay' },
-  { code: '56', name: 'Chile' },
-  { code: '55', name: 'Brasil' },
-  { code: '591', name: 'Bolivia' },
-  { code: '51', name: 'Perú' },
-  { code: '57', name: 'Colombia' },
-  { code: '34', name: 'España' },
-  { code: '1', name: 'EE. UU.' },
+  { code: '54', name: 'Argentina 🇦🇷' },
+  { code: '598', name: 'Uruguay 🇺🇾' },
+  { code: '595', name: 'Paraguay 🇵🇾' },
+  { code: '56', name: 'Chile 🇨🇱' },
+  { code: '55', name: 'Brasil 🇧🇷' },
+  { code: '591', name: 'Bolivia 🇧🇴' },
+  { code: '51', name: 'Perú 🇵🇪' },
+  { code: '57', name: 'Colombia 🇨🇴' },
+  { code: '34', name: 'España 🇪🇸' },
+  { code: '1', name: 'Estados Unidos 🇺🇸' },
 ];
 
 // Convierte la parte nacional al formato internacional argentino cuando

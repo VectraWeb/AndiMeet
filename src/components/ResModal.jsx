@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import { C, inp, SERVICES, serviceFromTime } from '../utils';
 import { Overlay, Field } from './ui';
+import PhoneField from './PhoneField';
 
-export default function ResModal({ editing, preTable, tables, service, tableStatus, staff, tableNums, ownerByTable, mozoTableIds, onSave, onSavePedido, onDelete, onClose }) {
+export default function ResModal({ editing, preTable, tables, service, tableStatus, staff, tableNums, ownerByTable, mozoTableIds, onSave, onSavePedido, onDelete, onReject, onClose }) {
   const [mode, setMode] = useState('reserva');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const [form, setForm] = useState(() => {
     const base = editing ? { ...editing } : {
       customerName: '', phone: '', partySize: 2,
@@ -97,10 +100,12 @@ export default function ResModal({ editing, preTable, tables, service, tableStat
             placeholder="Nombre del cliente" style={inp} autoFocus />
         </Field>
 
-        <Field label="Teléfono (opcional)">
-          <input value={form.phone} onChange={e => set('phone', e.target.value)}
-            placeholder="+54 9 11 ..." type="tel" style={inp} />
-        </Field>
+        <PhoneField
+          label="Teléfono (opcional)"
+          value={form.phone}
+          onChange={v => set('phone', v)}
+          placeholder="11 5555-1234"
+        />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <Field label="Comensales">
@@ -168,10 +173,12 @@ export default function ResModal({ editing, preTable, tables, service, tableStat
             placeholder="Nombre del cliente" style={inp} autoFocus />
         </Field>
 
-        <Field label="Teléfono">
-          <input value={pedidoForm.phone} onChange={e => setPedido('phone', e.target.value)}
-            placeholder="+54 9 11 ..." type="tel" style={inp} />
-        </Field>
+        <PhoneField
+          label="Teléfono"
+          value={pedidoForm.phone}
+          onChange={v => setPedido('phone', v)}
+          placeholder="11 5555-1234"
+        />
 
         <Field label="Detalle del pedido">
           <textarea value={pedidoForm.details} onChange={e => setPedido('details', e.target.value)}
@@ -206,6 +213,54 @@ export default function ResModal({ editing, preTable, tables, service, tableStat
       )}
 
       <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+        {editing && mode === 'reserva' && onReject && (
+          rejecting ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2 }}>
+              <input
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                placeholder="Motivo del rechazo..."
+                style={inp}
+                autoFocus
+              />
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  disabled={!rejectReason.trim()}
+                  onClick={async () => {
+                    if (!rejectReason.trim()) return;
+                    try {
+                      await onReject(editing, rejectReason);
+                      onClose();
+                    } catch {
+                      setRejecting(false);
+                    }
+                  }}
+                  style={{
+                    flex: 1, padding: '10px 12px', background: rejectReason.trim() ? '#e06060' : C.creamDeep,
+                    border: 'none', borderRadius: '10px', cursor: rejectReason.trim() ? 'pointer' : 'not-allowed',
+                    color: rejectReason.trim() ? '#fff' : C.muted, fontSize: '12px', fontWeight: 600, fontFamily: 'inherit',
+                  }}
+                >
+                  Rechazar y avisar al cliente
+                </button>
+                <button onClick={() => { setRejecting(false); setRejectReason(''); }} style={{
+                  padding: '10px 12px', background: C.creamDeep, border: 'none',
+                  borderRadius: '10px', cursor: 'pointer', fontSize: '12px', color: C.muted, fontFamily: 'inherit',
+                }}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setRejecting(true)} style={{
+              padding: '14px', background: 'transparent', border: `1.5px solid #e06060`,
+              borderRadius: '12px', cursor: 'pointer', color: '#e06060',
+              fontSize: '13px', fontWeight: 600, fontFamily: 'inherit',
+            }}>
+              Rechazar
+            </button>
+          )
+        )}
         {editing && (
           confirmDelete ? (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>

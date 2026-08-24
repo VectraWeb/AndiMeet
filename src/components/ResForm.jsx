@@ -7,6 +7,7 @@ import {
 import { db } from '../firebase';
 import { C, SERVICES, DEFAULT_CONFIG, configToArray, serviceFromTime, defaultServiceTime, todayISO } from '../utils';
 import { Field } from './ui';
+import PhoneField from './PhoneField';
 
 // ─── Firestore helpers ───────────────────────────────────────────────────────
 const resDocRef = (id) => doc(db, 'reservations', id);
@@ -179,16 +180,12 @@ export default function ResForm({ onStaffAccess, onBack }) {
           />
         </Field>
 
-        <Field label="Teléfono">
-          <input
-            type="tel"
-            inputMode="tel"
-            value={form.phone}
-            onChange={e => set('phone', e.target.value)}
-            placeholder="Ej: 11 5555 5555"
-            style={inp}
-          />
-        </Field>
+        <PhoneField
+          label="Teléfono"
+          value={form.phone}
+          onChange={v => set('phone', v)}
+          placeholder="11 5555-1234"
+        />
 
         <Field label="Fecha">
           <input

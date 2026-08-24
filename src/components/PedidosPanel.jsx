@@ -302,6 +302,12 @@ export default function PedidosPanel({ date, service }) {
         pedidoEstado: 'cancelado',
         pedidoRechazoMotivo: rejectReason.trim(),
       });
+      notificarN8N({
+        evento: 'solicitud_rechazada',
+        document_id: id,
+        tipo: 'pedido',
+        motivo: rejectReason.trim(),
+      });
       setRejectingId(null);
       setRejectReason('');
     } catch (err) {

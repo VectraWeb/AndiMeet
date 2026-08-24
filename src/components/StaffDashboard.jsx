@@ -221,7 +221,7 @@ export default function StaffDashboard({ onLogout }) {
           ...cleanData, id, date,
           mesa_id: cleanData.tableId,
           mesa: mesaNum ? `Mesa ${mesaNum}` : null,
-          estado: cleanData.tableId ? (cleanData.estado || 'confirmada') : 'pendiente',
+          estado: cleanData.tableId ? 'confirmada' : 'pendiente',
           liveState: cleanData.liveState || null,
           updatedAt: serverTimestamp(),
           createdAt: cleanData.createdAt || serverTimestamp(),
@@ -252,6 +252,25 @@ export default function StaffDashboard({ onLogout }) {
       });
     } catch (e) { console.error(e); throw e; }
   }, [date]);
+
+  const rejectRes = useCallback(async (resData, motivo) => {
+    try {
+      await updateDoc(resDocRef(resData.id), {
+        estado: 'cancelado',
+        rechazoMotivo: motivo.trim(),
+        updatedAt: serverTimestamp(),
+      });
+      notificarN8N({
+        evento: 'solicitud_rechazada',
+        document_id: resData.id,
+        tipo: 'reserva',
+        motivo: motivo.trim(),
+      });
+    } catch (e) {
+      console.error('[Andi] Error rechazando reserva:', e);
+      throw e;
+    }
+  }, []);
 
   // ── Actualizar solo el estado en vivo de una reserva ──────────────────────
   const updateLiveState = useCallback(async (res, liveState) => {
@@ -961,6 +980,7 @@ export default function StaffDashboard({ onLogout }) {
           onSave={handleSave}
           onSavePedido={savePedido}
           onDelete={handleDelete}
+          onReject={rejectRes}
           onClose={() => { setShowModal(false); setEditing(null); setPreTable(null); }}
         />
       )}

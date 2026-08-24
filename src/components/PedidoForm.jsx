@@ -5,6 +5,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { C, todayISO } from '../utils';
 import { Field } from './ui';
+import PhoneField from './PhoneField';
 import CartaVirtual from './CartaVirtual';
 
 // ─── Estilos ─────────────────────────────────────────────────────────────────
@@ -167,16 +168,12 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
           />
         </Field>
 
-        <Field label="Teléfono">
-          <input
-            type="tel"
-            inputMode="tel"
-            value={form.phone}
-            onChange={e => set('phone', e.target.value)}
-            placeholder="Ej: 11 5555 5555"
-            style={inp}
-          />
-        </Field>
+        <PhoneField
+          label="Teléfono"
+          value={form.phone}
+          onChange={v => set('phone', v)}
+          placeholder="11 5555-1234"
+        />
 
         {/* Carta virtual */}
         <button onClick={() => setShowCarta(s => !s)} style={{

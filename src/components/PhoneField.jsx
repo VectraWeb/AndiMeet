@@ -3,16 +3,16 @@ import { inp } from '../utils';
 import { Field } from './ui';
 
 const PAISES = [
-  { code: '54', name: 'Argentina 🇦🇷' },
-  { code: '598', name: 'Uruguay 🇺🇾' },
-  { code: '595', name: 'Paraguay 🇵🇾' },
-  { code: '56', name: 'Chile 🇨🇱' },
-  { code: '55', name: 'Brasil 🇧🇷' },
-  { code: '591', name: 'Bolivia 🇧🇴' },
-  { code: '51', name: 'Perú 🇵🇪' },
-  { code: '57', name: 'Colombia 🇨🇴' },
-  { code: '34', name: 'España 🇪🇸' },
-  { code: '1', name: 'Estados Unidos 🇺🇸' },
+  { code: '54', name: 'Argentina 🇦🇷', short: 'Arg 🇦🇷' },
+  { code: '598', name: 'Uruguay 🇺🇾', short: 'Uru 🇺🇾' },
+  { code: '595', name: 'Paraguay 🇵🇾', short: 'Par 🇵🇾' },
+  { code: '56', name: 'Chile 🇨🇱', short: 'Chi 🇨🇱' },
+  { code: '55', name: 'Brasil 🇧🇷', short: 'Bra 🇧🇷' },
+  { code: '591', name: 'Bolivia 🇧🇴', short: 'Bol 🇧🇴' },
+  { code: '51', name: 'Perú 🇵🇪', short: 'Per 🇵🇪' },
+  { code: '57', name: 'Colombia 🇨🇴', short: 'Col 🇨🇴' },
+  { code: '34', name: 'España 🇪🇸', short: 'Esp 🇪🇸' },
+  { code: '1', name: 'Estados Unidos 🇺🇸', short: 'EE. UU. 🇺🇸' },
 ];
 
 // Convierte la parte nacional al formato internacional argentino cuando
@@ -48,7 +48,7 @@ export default function PhoneField({ label = 'Teléfono', value = '', onChange, 
           style={{ ...inp, width: '132px', flexShrink: 0 }}
         >
           {PAISES.map(p => (
-            <option key={p.code} value={p.code}>{p.name} (+{p.code})</option>
+            <option key={p.code} value={p.code}>{p.short} (+{p.code})</option>
           ))}
         </select>
         <input

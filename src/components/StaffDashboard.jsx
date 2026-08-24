@@ -65,6 +65,7 @@ export default function StaffDashboard({ onLogout }) {
   const [editingLayout, setEditingLayout] = useState(false);
   const [optimisticStates, setOptimisticStates] = useState({});
   const [quickActionMenu, setQuickActionMenu] = useState(null);
+  const [modalMode, setModalMode] = useState('reserva');
   const [showStaff, setShowStaff] = useState(false);
   const [showSectors, setShowSectors] = useState(false);
   const [selectedMozoTab, setSelectedMozoTab] = useState(null);
@@ -255,10 +256,20 @@ export default function StaffDashboard({ onLogout }) {
 
   const rejectRes = useCallback(async (resData, motivo) => {
     try {
-      await updateDoc(resDocRef(resData.id), {
-        estado: 'cancelado',
-        rechazoMotivo: motivo.trim(),
-        updatedAt: serverTimestamp(),
+      await runTransaction(db, async (transaction) => {
+        // Si la reserva ya tenía mesa asignada, liberarla (rechazo tardío).
+        if (resData.tableId && resData.service) {
+          const mesaRef = mesaReservadaRef(resData.tableId, date, resData.service);
+          const mesaSnap = await transaction.get(mesaRef);
+          if (mesaSnap.exists && mesaSnap.data().reservationId === resData.id) {
+            transaction.delete(mesaRef);
+          }
+        }
+        transaction.update(resDocRef(resData.id), {
+          estado: 'cancelado',
+          rechazoMotivo: motivo.trim(),
+          updatedAt: serverTimestamp(),
+        });
       });
       notificarN8N({
         evento: 'solicitud_rechazada',
@@ -270,7 +281,7 @@ export default function StaffDashboard({ onLogout }) {
       console.error('[Andi] Error rechazando reserva:', e);
       throw e;
     }
-  }, []);
+  }, [date]);
 
   // ── Actualizar solo el estado en vivo de una reserva ──────────────────────
   const updateLiveState = useCallback(async (res, liveState) => {
@@ -546,7 +557,7 @@ export default function StaffDashboard({ onLogout }) {
   const handleTableClick = useCallback((t, s) => {
     if (editingSectors) return;
     if (s.status === 'free') {
-      setPreTable(t); setEditing(null); setShowModal(true);
+      setModalMode('reserva'); setPreTable(t); setEditing(null); setShowModal(true);
     } else {
       setShowLiveMenu(s.res);
     }
@@ -727,9 +738,10 @@ export default function StaffDashboard({ onLogout }) {
                   <ReservationList
                     sortedRes={unassignedRes}
                     tables={tables}
-                    onEdit={(r) => { setEditing(r); setShowModal(true); }}
+                    onEdit={(r) => { setModalMode('reserva'); setEditing(r); setShowModal(true); }}
                     onAction={(r) => setShowLiveMenu(r)}
                     onGoToTable={handleGoToTable}
+                    onReject={rejectRes}
                   />
                 ) : (
                   <div style={{ padding: '20px', textAlign: 'center', color: C.muted, fontSize: '13px', background: C.creamDeep, borderRadius: '12px' }}>
@@ -818,9 +830,9 @@ export default function StaffDashboard({ onLogout }) {
                                 <button key={`${s.id}-${i}`} disabled={!t} onClick={() => {
                                   if (t) {
                                     if (hasRes) {
-                                      if (st.status === 'free') { setPreTable(t); setEditing(null); setShowModal(true); }
+                                      if (st.status === 'free') { setModalMode('reserva'); setPreTable(t); setEditing(null); setShowModal(true); }
                                       else { setShowLiveMenu(st.res); }
-                                    } else { setPreTable(t); setEditing(null); setShowModal(true); }
+                                    } else { setModalMode('reserva'); setPreTable(t); setEditing(null); setShowModal(true); }
                                   }
                                 }} style={{
                                   aspectRatio: '1', borderRadius: '10px', border: `1.5px solid ${border}`,
@@ -847,10 +859,11 @@ export default function StaffDashboard({ onLogout }) {
                             <ReservationList
                               sortedRes={mozoSvcRes(s)}
                               tables={tables}
-                              onEdit={(r) => { setEditing(r); setShowModal(true); }}
+                              onEdit={(r) => { setModalMode('reserva'); setEditing(r); setShowModal(true); }}
                               onAction={(r) => setShowLiveMenu(r)}
                               onGoToTable={handleGoToTable}
                               onPlanoHover={setPlanoHover}
+                              onReject={rejectRes}
                             />
                           </div>
                         ) : (
@@ -908,8 +921,12 @@ export default function StaffDashboard({ onLogout }) {
         <PedidosPanel date={date} service={service} />
       )}
 
-      {/* ── FAB: Nueva reserva ── */}
-      <button onClick={() => { setEditing(null); setPreTable(null); setShowModal(true); }} style={{
+      {/* ── FAB: Nueva reserva / pedido según el panel activo ── */}
+      <button onClick={() => {
+        setEditing(null); setPreTable(null);
+        setModalMode(mainTab === 'pedidos' ? 'pedido' : 'reserva');
+        setShowModal(true);
+      }} style={{
         position: 'fixed', bottom: 'calc(84px + env(safe-area-inset-bottom, 0px))', right: '24px',
         width: '60px', height: '60px', borderRadius: '30px',
         background: C.terra, color: '#fff', border: 'none',
@@ -955,7 +972,7 @@ export default function StaffDashboard({ onLogout }) {
           tables={tables}
           cleaningTimer={cleaningTimers[showLiveMenu.tableId] || null}
           onSelect={(state) => updateLiveState(showLiveMenu, state)}
-          onEdit={() => { setEditing(showLiveMenu); setShowLiveMenu(null); setShowModal(true); }}
+          onEdit={() => { setModalMode('reserva'); setEditing(showLiveMenu); setShowLiveMenu(null); setShowModal(true); }}
           onClose={() => setShowLiveMenu(null)}
           onFinalize={() => finishNow(showLiveMenu)}
           onReset={() => resetLiveState(showLiveMenu)}
@@ -968,6 +985,7 @@ export default function StaffDashboard({ onLogout }) {
       {showModal && (
         <ResModal
           editing={editing}
+          initialMode={modalMode}
           preTable={preTable}
           tables={tables}
           slots={slots}

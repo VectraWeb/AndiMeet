@@ -4,8 +4,8 @@ import { C, inp, SERVICES, serviceFromTime } from '../utils';
 import { Overlay, Field } from './ui';
 import PhoneField from './PhoneField';
 
-export default function ResModal({ editing, preTable, tables, service, tableStatus, staff, tableNums, ownerByTable, mozoTableIds, onSave, onSavePedido, onDelete, onReject, onClose }) {
-  const [mode, setMode] = useState('reserva');
+export default function ResModal({ editing, initialMode, preTable, tables, service, tableStatus, staff, tableNums, ownerByTable, mozoTableIds, onSave, onSavePedido, onDelete, onReject, onClose }) {
+  const [mode, setMode] = useState(initialMode === 'pedido' ? 'pedido' : 'reserva');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState('');

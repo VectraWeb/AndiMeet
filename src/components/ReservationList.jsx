@@ -1,8 +1,74 @@
-import React from 'react';
-import { Users, Clock, User, RefreshCw, MapPin } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, Clock, User, RefreshCw, MapPin, XCircle } from 'lucide-react';
 import { C, LIVE_STATES } from '../utils';
 
-const ReservationList = React.memo(function ReservationList({ sortedRes, tables, onEdit, onAction, onGoToTable, onPlanoHover }) {
+// Botón de rechazo con motivo inline (se usa antes de asignar mesa).
+function RejectInline({ onReject }) {
+  const [open, setOpen] = useState(false);
+  const [motivo, setMotivo] = useState('');
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        title="Rechazar reserva"
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        style={{
+          flexShrink: 0, background: 'transparent', border: `1.5px solid #e06060`,
+          borderRadius: '10px', padding: '8px', cursor: 'pointer', color: '#e06060',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <XCircle size={15} />
+      </button>
+    );
+  }
+
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{ display: 'flex', flexDirection: 'column', gap: '5px', flexShrink: 0, maxWidth: '200px' }}
+    >
+      <input
+        value={motivo}
+        onChange={(e) => setMotivo(e.target.value)}
+        placeholder="Motivo del rechazo..."
+        autoFocus
+        style={{
+          width: '100%', padding: '7px 9px', fontSize: '12px', fontFamily: 'inherit',
+          border: `1.5px solid ${C.creamDeep}`, borderRadius: '8px', color: C.espresso,
+          outline: 'none', background: C.white,
+        }}
+      />
+      <div style={{ display: 'flex', gap: '5px' }}>
+        <button
+          type="button"
+          disabled={!motivo.trim()}
+          onClick={(e) => { e.stopPropagation(); if (!motivo.trim()) return; onReject(motivo); setOpen(false); setMotivo(''); }}
+          style={{
+            flex: 1, padding: '6px 8px', background: motivo.trim() ? '#e06060' : C.creamDeep,
+            border: 'none', borderRadius: '8px', cursor: motivo.trim() ? 'pointer' : 'not-allowed',
+            color: motivo.trim() ? '#fff' : C.muted, fontSize: '11px', fontWeight: 700, fontFamily: 'inherit',
+          }}
+        >
+          Rechazar
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setOpen(false); setMotivo(''); }}
+          style={{
+            padding: '6px 8px', background: C.creamDeep, border: 'none',
+            borderRadius: '8px', cursor: 'pointer', color: C.muted, fontSize: '11px', fontWeight: 600, fontFamily: 'inherit',
+          }}
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const ReservationList = React.memo(function ReservationList({ sortedRes, tables, onEdit, onAction, onGoToTable, onPlanoHover, onReject }) {
   if (sortedRes.length === 0) {
     return (
       <div style={{ padding: '32px 16px', textAlign: 'center', color: C.muted, background: C.creamDeep, borderRadius: '14px', fontSize: '13px' }}>
@@ -65,6 +131,9 @@ const ReservationList = React.memo(function ReservationList({ sortedRes, tables,
               </div>
               {r.notes && <div style={{ fontSize: '11px', color: C.terra, marginTop: '3px', fontStyle: 'italic' }}>{r.notes}</div>}
             </div>
+            {!isDone && onReject && r.estado === 'pendiente' && (
+              <RejectInline onReject={(motivo) => onReject(r, motivo)} />
+            )}
             {!isDone && (
               onGoToTable ? (
                 <button

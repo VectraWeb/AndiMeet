@@ -386,6 +386,14 @@ export default function PedidosPanel({ date, service }) {
 async function updatePedidoEstado(id, newEstado) {
   try {
     await updateDoc(doc(db, 'pedidos', id), { pedidoEstado: newEstado });
+    if (newEstado === 'cancelado') {
+      notificarN8N({
+        evento: 'solicitud_rechazada',
+        document_id: id,
+        tipo: 'pedido',
+        motivo: '',
+      });
+    }
   } catch (err) {
     console.error('[Pedidos] Error updating estado:', err);
   }

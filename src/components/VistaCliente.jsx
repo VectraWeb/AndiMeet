@@ -40,9 +40,9 @@ export default function VistaCliente({ onStaffAccess }) {
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '480px' }}>
         {mode === 'reserva' ? (
-          <ResForm onBack={() => setMode(null)} onStaffAccess={onStaffAccess} />
+          <ResForm onBack={() => { window.scrollTo(0, 0); setMode(null); }} onStaffAccess={onStaffAccess} />
         ) : mode === 'pedido' ? (
-          <PedidoForm onBack={() => setMode(null)} onStaffAccess={onStaffAccess} />
+          <PedidoForm onBack={() => { window.scrollTo(0, 0); setMode(null); }} onStaffAccess={onStaffAccess} />
         ) : (
           <div style={{ padding: '0 0 40px' }}>
             {/* Header branding */}

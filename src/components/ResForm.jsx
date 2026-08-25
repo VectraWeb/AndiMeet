@@ -140,6 +140,15 @@ export default function ResForm({ onStaffAccess, onBack }) {
         <p style={{ fontSize: '14px', color: C.muted, margin: '4px 0 0' }}>
           Te esperamos en <strong>Andi</strong>
         </p>
+        {onBack && (
+          <button onClick={onBack} style={{
+            marginTop: '24px', padding: '12px 28px', background: C.forest, color: C.cream,
+            border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            Volver al inicio
+          </button>
+        )}
       </div>
     );
   }
@@ -176,7 +185,6 @@ export default function ResForm({ onStaffAccess, onBack }) {
             onChange={e => set('customerName', e.target.value)}
             placeholder="Tu nombre"
             style={inp}
-            autoFocus
           />
         </Field>
 

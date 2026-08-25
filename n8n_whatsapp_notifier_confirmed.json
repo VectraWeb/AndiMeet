@@ -1167,25 +1167,25 @@
             {
               "id": "rem-prep-doc",
               "name": "document_id",
-              "value": "={{ $json.document_id }}",
+              "value": "={{ $('Filtrar próximas reservas (15 min)').itemMatching(0).json.document_id }}",
               "type": "string"
             },
             {
               "id": "rem-prep-key",
               "name": "reminder_key",
-              "value": "={{ $json.reminder_key }}",
+              "value": "={{ $('Filtrar próximas reservas (15 min)').itemMatching(0).json.reminder_key }}",
               "type": "string"
             },
             {
               "id": "rem-prep-phone",
               "name": "phone",
-              "value": "={{ $json.phone }}",
+              "value": "={{ $('Filtrar próximas reservas (15 min)').itemMatching(0).json.phone }}",
               "type": "string"
             },
             {
               "id": "rem-prep-msg",
               "name": "message",
-              "value": "={{ (() => { const mesa = $json.mesa ? ' (mesa #' + $json.mesa + ')' : ''; return 'Hola ' + $json.name + ', tu reserva de las ' + $json.time + ' es en 15 minutos' + mesa + '. ¡Te esperamos en Andi! 🍽️'; })() }}",
+              "value": "={{ (() => { const f = $('Filtrar próximas reservas (15 min)').itemMatching(0).json; const mesa = f.mesa ? ' (mesa #' + f.mesa + ')' : ''; return 'Hola ' + f.name + ', tu reserva de las ' + f.time + ' es en 15 minutos' + mesa + '. ¡Te esperamos en Andi! 🍽️'; })() }}",
               "type": "string"
             }
           ]

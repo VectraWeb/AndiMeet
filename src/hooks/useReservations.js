@@ -25,7 +25,8 @@ export function useReservations(date) {
       (snap) => {
         const data = snap.docs
           .map(d => ({ ...d.data(), id: d.id, service: normService(d.data().service) }))
-          .filter(r => r.source !== 'whatsapp_bot');
+          .filter(r => r.source !== 'whatsapp_bot')
+          .filter(r => !['cancelado', 'no_show', 'ausente'].includes(r.estado));
         setReservations(data);
       },
       (err) => { console.error('[Andi] Firestore error:', err); }

@@ -119,11 +119,10 @@
     },
     {
       "parameters": {
-        "operation": "get",
-        "propertyName": "notified",
+        "operation": "incr",
         "key": "={{ $json.cache_key }}",
-        "keyType": "string",
-        "options": {}
+        "expire": true,
+        "ttl": 86400
       },
       "id": "notifier-redis-get-001",
       "name": "Redis GET: notified",
@@ -152,7 +151,7 @@
           "conditions": [
             {
               "id": "notifier-cache-exists-condition",
-              "leftValue": "={{ $json.notified !== null && $json.notified !== undefined && $json.notified !== '' }}",
+              "leftValue": "={{ Object.values($json)[0] !== 1 }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -560,30 +559,6 @@
       }
     },
     {
-      "parameters": {
-        "operation": "set",
-        "key": "={{ $('Normalizar datos Firestore').first().json.cache_key }}",
-        "value": "sent",
-        "keyType": "string",
-        "expire": true,
-        "ttl": 86400
-      },
-      "id": "notifier-redis-set-001",
-      "name": "Redis SET: notified (24h)",
-      "type": "n8n-nodes-base.redis",
-      "typeVersion": 1,
-      "position": [
-        1600,
-        -280
-      ],
-      "credentials": {
-        "redis": {
-          "id": "YjKGAHBOZUiS6oYB",
-          "name": "Redis account"
-        }
-      }
-    },
-    {
       "parameters": {},
       "id": "notifier-end-sent-001",
       "name": "Fin: notificación enviada",
@@ -708,11 +683,10 @@
     },
     {
       "parameters": {
-        "operation": "get",
-        "propertyName": "rejected",
-        "key": "={{ $('Normalizar entrada').first().json.rejected_key }}",
-        "keyType": "string",
-        "options": {}
+        "operation": "incr",
+        "key": "={{ $json.rejected_key }}",
+        "expire": true,
+        "ttl": 86400
       },
       "id": "notifier-redis-get-rejected-001",
       "name": "Redis GET: rejected",
@@ -741,7 +715,7 @@
           "conditions": [
             {
               "id": "notifier-rejected-exists-condition",
-              "leftValue": "={{ $json.rejected !== null && $json.rejected !== undefined && $json.rejected !== '' }}",
+              "leftValue": "={{ Object.values($json)[0] !== 1 }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -1000,30 +974,6 @@
       }
     },
     {
-      "parameters": {
-        "operation": "set",
-        "key": "={{ $('Normalizar entrada').first().json.rejected_key }}",
-        "value": "sent",
-        "keyType": "string",
-        "expire": true,
-        "ttl": 86400
-      },
-      "id": "notifier-redis-set-rejected-001",
-      "name": "Redis SET: rejected (24h)",
-      "type": "n8n-nodes-base.redis",
-      "typeVersion": 1,
-      "position": [
-        1600,
-        0
-      ],
-      "credentials": {
-        "redis": {
-          "id": "YjKGAHBOZUiS6oYB",
-          "name": "Redis account"
-        }
-      }
-    },
-    {
       "parameters": {},
       "id": "notifier-fin-reject-sent-001",
       "name": "Fin: rechazo enviado",
@@ -1058,11 +1008,10 @@
       "parameters": {
         "authentication": "serviceAccount",
         "resource": "document",
-        "operation": "getAll",
+        "operation": "query",
         "projectId": "andimeet-93f62",
         "database": "(default)",
-        "collection": "reservations",
-        "returnAll": true,
+        "query": "{\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"reservations\" }],\n    \"where\": {\n      \"compositeFilter\": {\n        \"op\": \"AND\",\n        \"filters\": [\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"date\" },\n              \"op\": \"GREATER_THAN_OR_EQUAL\",\n              \"value\": { \"stringValue\": \"{{ (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }); })() }}\" }\n            }\n          },\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"date\" },\n              \"op\": \"LESS_THAN_OR_EQUAL\",\n              \"value\": { \"stringValue\": \"{{ new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }) }}\" }\n            }\n          }\n        ]\n      }\n    }\n  }\n}",
         "simple": true
       },
       "id": "notifier-firestore-all-reservas",
@@ -1082,7 +1031,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.all().map(i => i.json);\nlet docs = [];\nfor (const it of input) {\n  if (Array.isArray(it)) docs = docs.concat(it);\n  else if (it && Array.isArray(it.documents)) docs = docs.concat(it.documents);\n  else if (it && Array.isArray(it.items)) docs = docs.concat(it.items);\n  else if (it && Array.isArray(it.body)) docs = docs.concat(it.body);\n  else if (it && it.body) docs.push(it.body);\n  else docs.push(it);\n}\n\nconst getField = (d, k) => {\n  if (!d) return null;\n  if (d.fields && d.fields[k] !== undefined) {\n    const f = d.fields[k];\n    if (f === null || f === undefined) return null;\n    if (f.stringValue !== undefined) return f.stringValue;\n    if (f.integerValue !== undefined) return parseInt(f.integerValue);\n    if (f.booleanValue !== undefined) return f.booleanValue;\n    if (f.doubleValue !== undefined) return parseFloat(f.doubleValue);\n    return null;\n  }\n  return d[k] !== undefined ? d[k] : null;\n};\n\nconst getId = (d) => {\n  if (!d) return '';\n  if (d.id) return d.id;\n  if (d._id) return d._id;\n  if (d.name) return d.name.split('/').pop();\n  return '';\n};\n\nconst nowStr = new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' });\nconst nowParts = nowStr.replace(' ', 'T').split('T');\nconst hoy = nowParts[0];\nconst [h, m] = nowParts[1].slice(0, 5).split(':').map(Number);\nlet nowMins = h * 60 + m;\nif (h < 12) nowMins += 24 * 60;\n\nconst ayerD = new Date(nowStr);\nayerD.setDate(ayerD.getDate() - 1);\nconst ayer = ayerD.toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });\n\nconst t2m = (time, service) => {\n  const p = String(time || '').split(':').map(Number);\n  if (p.length !== 2 || isNaN(p[0])) return null;\n  let mins = p[0] * 60 + p[1];\n  if (service === 'cena' && p[0] < 12) mins += 24 * 60;\n  return mins;\n};\n\nconst normalizePhone = (v) => {\n  let s = String(v || '').replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  return '54' + s;\n};\n\nconst out = [];\nfor (const d of docs) {\n  const id = getId(d);\n  const date = getField(d, 'date');\n  const time = getField(d, 'time');\n  const service = getField(d, 'service') || '';\n  const estado = String(getField(d, 'estado') || '').toLowerCase();\n  const name = String(getField(d, 'customerName') || '').trim();\n  const phone = normalizePhone(getField(d, 'customerPhone') || getField(d, 'phone'));\n  const mesaRaw = String(getField(d, 'mesa') || getField(d, 'tableId') || getField(d, 'mesa_id') || '');\n  const rMins = t2m(time, service);\n  if (!id || !date || rMins === null || !phone || !name) continue;\n  if (!/^r/i.test(id)) continue; // solo reservas (los docs p... son pedidos viejos)\n  if (['cancelado', 'no_show', 'ausente', 'finalizado'].includes(estado)) continue;\n  const cenaMadrugada = rMins >= 19 * 60;\n  const dateOk = (cenaMadrugada && h < 12) ? date === ayer : date === hoy;\n  if (!dateOk) continue;\n  const until = rMins - nowMins;\n  if (until <= 13 || until > 15) continue;\n  const mesaNum = mesaRaw.replace(/^mesa\\s+/i, '').replace(/^m(?=\\d)/i, '');\n  out.push({ json: {\n    document_id: id,\n    reminder_key: 'reminder15_' + id,\n    phone,\n    name,\n    time,\n    mesa: mesaNum,\n  } });\n}\nreturn out;"
+        "jsCode": "const input = $input.all().map(i => i.json);\nlet docs = [];\nfor (const it of input) {\n  if (Array.isArray(it)) docs = docs.concat(it);\n  else if (it && Array.isArray(it.documents)) docs = docs.concat(it.documents);\n  else if (it && Array.isArray(it.items)) docs = docs.concat(it.items);\n  else if (it && Array.isArray(it.body)) docs = docs.concat(it.body);\n  else if (it && it.body) docs.push(it.body);\n  else docs.push(it);\n}\n\nconst getField = (d, k) => {\n  if (!d) return null;\n  if (d.fields && d.fields[k] !== undefined) {\n    const f = d.fields[k];\n    if (f === null || f === undefined) return null;\n    if (f.stringValue !== undefined) return f.stringValue;\n    if (f.integerValue !== undefined) return parseInt(f.integerValue);\n    if (f.booleanValue !== undefined) return f.booleanValue;\n    if (f.doubleValue !== undefined) return parseFloat(f.doubleValue);\n    return null;\n  }\n  return d[k] !== undefined ? d[k] : null;\n};\n\nconst getId = (d) => {\n  if (!d) return '';\n  if (d.id) return d.id;\n  if (d._id) return d._id;\n  if (d.name) return d.name.split('/').pop();\n  return '';\n};\n\nconst nowStr = new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' });\nconst nowParts = nowStr.replace(' ', 'T').split('T');\nconst hoy = nowParts[0];\nconst [h, m] = nowParts[1].slice(0, 5).split(':').map(Number);\nlet nowMins = h * 60 + m;\nif (h < 12) nowMins += 24 * 60;\n\nconst ayerD = new Date(nowStr.replace(' ', 'T') + '-03:00');\nayerD.setDate(ayerD.getDate() - 1);\nconst ayer = ayerD.toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });\n\nconst t2m = (time, service) => {\n  const p = String(time || '').split(':').map(Number);\n  if (p.length !== 2 || isNaN(p[0])) return null;\n  let mins = p[0] * 60 + p[1];\n  if (service === 'cena' && p[0] < 12) mins += 24 * 60;\n  return mins;\n};\n\nconst normalizePhone = (v) => {\n  let s = String(v || '').replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  return '54' + s;\n};\n\nconst out = [];\nfor (const d of docs) {\n  const id = getId(d);\n  const date = getField(d, 'date');\n  const time = getField(d, 'time');\n  const service = getField(d, 'service') || '';\n  const estado = String(getField(d, 'estado') || '').toLowerCase();\n  const name = String(getField(d, 'customerName') || '').trim();\n  const phone = normalizePhone(getField(d, 'customerPhone') || getField(d, 'phone'));\n  const mesaRaw = String(getField(d, 'mesa') || getField(d, 'tableId') || getField(d, 'mesa_id') || '');\n  const rMins = t2m(time, service);\n  if (!id || !date || rMins === null || !phone || !name) continue;\n  if (!/^r/i.test(id)) continue; // solo reservas (los docs p... son pedidos viejos)\n  if (['cancelado', 'no_show', 'ausente', 'finalizado'].includes(estado)) continue;\n  if (estado === 'pendiente' && !mesaRaw) continue; // pendiente sin mesa: no fue confirmada por un humano\n  const cenaMadrugada = rMins >= 19 * 60;\n  const dateOk = (cenaMadrugada && h < 12) ? date === ayer : date === hoy;\n  if (!dateOk) continue;\n  const until = rMins - nowMins;\n  if (until <= 13 || until > 15) continue;\n  const mesaNum = mesaRaw.replace(/^mesa\\s+/i, '').replace(/^m(?=\\d)/i, '');\n  out.push({ json: {\n    document_id: id,\n    reminder_key: 'reminder15_' + id,\n    phone,\n    name,\n    time,\n    mesa: mesaNum,\n  } });\n}\nreturn out;"
       },
       "id": "notifier-filter-upcoming",
       "name": "Filtrar próximas reservas (15 min)",
@@ -1095,11 +1044,10 @@
     },
     {
       "parameters": {
-        "operation": "get",
-        "propertyName": "reminder15",
+        "operation": "incr",
         "key": "={{ $json.reminder_key }}",
-        "keyType": "string",
-        "options": {}
+        "expire": true,
+        "ttl": 86400
       },
       "id": "notifier-redis-get-reminder",
       "name": "Redis GET: reminder15",
@@ -1128,7 +1076,7 @@
           "conditions": [
             {
               "id": "notifier-reminder-exists-condition",
-              "leftValue": "={{ $json.reminder15 !== null && $json.reminder15 !== undefined && $json.reminder15 !== '' }}",
+              "leftValue": "={{ Object.values($json)[0] !== 1 }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -1167,25 +1115,25 @@
             {
               "id": "rem-prep-doc",
               "name": "document_id",
-              "value": "={{ $('Filtrar próximas reservas (15 min)').itemMatching(0).json.document_id }}",
+              "value": "={{ $json.document_id }}",
               "type": "string"
             },
             {
               "id": "rem-prep-key",
               "name": "reminder_key",
-              "value": "={{ $('Filtrar próximas reservas (15 min)').itemMatching(0).json.reminder_key }}",
+              "value": "={{ $json.reminder_key }}",
               "type": "string"
             },
             {
               "id": "rem-prep-phone",
               "name": "phone",
-              "value": "={{ $('Filtrar próximas reservas (15 min)').itemMatching(0).json.phone }}",
+              "value": "={{ $json.phone }}",
               "type": "string"
             },
             {
               "id": "rem-prep-msg",
               "name": "message",
-              "value": "={{ (() => { const f = $('Filtrar próximas reservas (15 min)').itemMatching(0).json; const mesa = f.mesa ? ' (mesa #' + f.mesa + ')' : ''; return 'Hola ' + f.name + ', tu reserva de las ' + f.time + ' es en 15 minutos' + mesa + '. ¡Te esperamos en Andi! 🍽️'; })() }}",
+              "value": "={{ (() => { const f = $json; const mesa = f.mesa ? ' (mesa #' + f.mesa + ')' : ''; return 'Hola ' + f.name + ', tu reserva de las ' + f.time + ' es en 15 minutos' + mesa + '. ¡Te esperamos en Andi! 🍽️'; })() }}",
               "type": "string"
             }
           ]
@@ -1234,7 +1182,7 @@
             {
               "id": "rem-mark-doc",
               "name": "document_id",
-              "value": "={{ $('Filtrar próximas reservas (15 min)').itemMatching(0).json.document_id }}",
+              "value": "={{ $json.document_id }}",
               "type": "string"
             },
             {
@@ -1279,30 +1227,6 @@
         "googleApi": {
           "id": "4oMTtyVYbyEwbL9v",
           "name": "Google Service Account account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "set",
-        "key": "={{ $('Filtrar próximas reservas (15 min)').itemMatching(0).json.reminder_key }}",
-        "value": "sent",
-        "keyType": "string",
-        "expire": true,
-        "ttl": 86400
-      },
-      "id": "notifier-redis-set-reminder",
-      "name": "Redis SET: reminder15 (24h)",
-      "type": "n8n-nodes-base.redis",
-      "typeVersion": 1,
-      "position": [
-        -240,
-        480
-      ],
-      "credentials": {
-        "redis": {
-          "id": "YjKGAHBOZUiS6oYB",
-          "name": "Redis account"
         }
       }
     },
@@ -1501,17 +1425,6 @@
       "main": [
         [
           {
-            "node": "Redis SET: notified (24h)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Redis SET: notified (24h)": {
-      "main": [
-        [
-          {
             "node": "Fin: notificación enviada",
             "type": "main",
             "index": 0
@@ -1649,17 +1562,6 @@
       "main": [
         [
           {
-            "node": "Redis SET: rejected (24h)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Redis SET: rejected (24h)": {
-      "main": [
-        [
-          {
             "node": "Fin: rechazo enviado",
             "type": "main",
             "index": 0
@@ -1763,17 +1665,6 @@
       ]
     },
     "Firestore UPDATE: recordatorio15": {
-      "main": [
-        [
-          {
-            "node": "Redis SET: reminder15 (24h)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Redis SET: reminder15 (24h)": {
       "main": [
         [
           {

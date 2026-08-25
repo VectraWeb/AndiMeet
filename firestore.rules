@@ -35,7 +35,9 @@ service cloud.firestore {
           'estado', 'liveState', 'stateLog',
           'startedAt', 'leftAt', 'cleaningStartedAt', 'cleaningCompletedAt',
           'staffId', 'staffName', 'source',
-          'date', 'createdAt', 'updatedAt'
+          'date', 'createdAt', 'updatedAt',
+          'rechazoMotivo', 'canceladoMotivo',
+          'notificacion_enviada', 'rechazo_notificado', 'recordatorio15_enviado'
         ]);
 
       allow delete: if isAuthenticated();
@@ -52,7 +54,10 @@ service cloud.firestore {
       allow read: if isAuthenticated();
 
       allow update: if isAuthenticated()
-        && request.resource.data.keys().hasOnly(['pedidoEstado', 'pedidoRechazoMotivo']);
+        && request.resource.data.keys().hasOnly([
+          'pedidoEstado', 'pedidoRechazoMotivo',
+          'tiempoPreparacionMin', 'tiempoEnvioMin', 'tiempoTotalMin', 'confirmadoAt'
+        ]);
 
       allow delete: if isAuthenticated();
     }

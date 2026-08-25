@@ -52,6 +52,9 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  // Cierre semanal: los martes no se atiende (pedidos del día).
+  const closedTuesday = new Date(todayISO() + 'T12:00:00').getDay() === 2;
+
   // ── Agregar ítem desde la carta al detalle del pedido ──────────────────
   const handleAddItem = useCallback((item) => {
     const line = `• ${item.name}`;
@@ -66,6 +69,7 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
     && form.phone.trim().length >= 6
     && form.details.trim().length >= 3
     && (form.modalidad === 'retiro' || form.direccion.trim().length >= 4)
+    && !closedTuesday
     && !submitting;
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -245,6 +249,12 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
               style={inp}
             />
           </Field>
+        )}
+
+        {closedTuesday && (
+          <div style={{ padding: '10px 14px', background: '#fdf6e3', border: `1px solid ${C.soon}`, borderRadius: '12px', fontSize: '13px', color: '#6b5a00', lineHeight: '1.4' }}>
+            Hoy cerramos por descanso (martes). Te esperamos mañana a partir de las 11:30.
+          </div>
         )}
 
         {error && (

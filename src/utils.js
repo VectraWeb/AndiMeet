@@ -207,7 +207,7 @@ export const defaultServiceTime = () => {
 // ─── Utilidad N8N ────────────────────────────────────────────────────────────
 const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || '';
 const N8N_WEBHOOK_SECRET = import.meta.env.VITE_N8N_WEBHOOK_SECRET || '';
-export const notificarN8N = (datos) => {
+export const notificarN8N = async (datos) => {
   if (!N8N_WEBHOOK_URL) {
     console.warn('[Andi] VITE_N8N_WEBHOOK_URL no configurada: no se notificará a n8n.', datos);
     return;
@@ -217,15 +217,26 @@ export const notificarN8N = (datos) => {
   }
   const headers = { 'Content-Type': 'application/json' };
   if (N8N_WEBHOOK_SECRET) headers['x-andi-secret'] = N8N_WEBHOOK_SECRET;
-  fetch(N8N_WEBHOOK_URL, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(datos),
-  })
-    .then(res => {
-      if (!res.ok) console.warn(`[Andi] n8n respondió ${res.status} para ${datos.evento}:`, datos);
-    })
-    .catch(err => console.error('[Andi] Error silencioso al notificar a n8n:', err));
+
+  // Reintentos con backoff: el notificador de n8n deduplica por document_id
+  // (Redis), así que reintentar nunca duplica mensajes al cliente.
+  const delays = [0, 2000, 8000];
+  let lastErr = null;
+  for (const delay of delays) {
+    if (delay) await new Promise((r) => setTimeout(r, delay));
+    try {
+      const res = await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(datos),
+      });
+      if (res.ok) return;
+      lastErr = new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  console.error('[Andi] n8n no alcanzado tras reintentos:', datos, lastErr);
 };
 
 // ─── Calcula duración (min) de cada estado desde stateLog ─────────────────
@@ -278,7 +289,8 @@ export const SECTOR_COLORS = [
 
 const STAFF_AUTH_KEY = 'isStaff';
 
-const staffPin = () => import.meta.env.VITE_STAFF_PIN || '2024';
+// Sin VITE_STAFF_PIN el acceso staff queda deshabilitado (falla cerrado).
+const staffPin = () => import.meta.env.VITE_STAFF_PIN || '';
 
 export function isStaffAuthenticated() {
   return sessionStorage.getItem(STAFF_AUTH_KEY) === btoa('andi:' + staffPin());

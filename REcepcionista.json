@@ -929,7 +929,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const reservationsResp = $('Get Day Reservations').item.json;\nconst parse = $('Parse Time & Service').item.json;\n\nconst requestedPartySize = parse.partySize || 2;\nconst requestedDate = parse.reservation_date;\nconst requestedService = parse.reservation_service;\nconst requestedTime = parse.reservation_time;\n\n// ── Martes cerrado ──\nconst fp = (requestedDate || '').split('-');\nif (fp.length === 3) {\n  const fd = new Date(+fp[0], +fp[1] - 1, +fp[2]);\n  if (fd.getDay() === 2) {\n    return [{\n      json: {\n        closed_error: true,\n        closed_message: 'Lo sentimos, los martes estamos cerrados. Podés reservar otro día.',\n        has_availability: false,\n        assigned_table: null,\n        assigned_table_name: null,\n        assigned_table_capacity: null,\n        free_tables: 0,\n        free_suitable_tables: 0,\n        total_tables: 0,\n        occupied_tables: 0,\n        requested_party_size: requestedPartySize,\n        requested_time: requestedTime,\n        requested_date: requestedDate,\n        requested_service: requestedService,\n        customerName: parse.customerName || '',\n        phone: '',\n        notes: parse.notes || '',\n        mozo: parse.mozo || '',\n        reservation_estado: 'pendiente',\n        customerPhone: '',\n        duplicate_error: false,\n      }\n    }];\n  }\n}\n\n// ── Helpers ──\nconst extractDocuments = (data) => {\n  if (!data) return [];\n  if (Array.isArray(data)) return data;\n  if (data.documents && Array.isArray(data.documents)) return data.documents;\n  if (data.items && Array.isArray(data.items)) return data.items;\n  if (data.body) return extractDocuments(data.body);\n  if (data.data) return extractDocuments(data.data);\n  return [];\n};\n\nconst extractField = (item, key) => {\n  if (!item) return null;\n  if (item.fields && item.fields[key]) {\n    const f = item.fields[key];\n    return f.stringValue !== undefined ? f.stringValue :\n           f.integerValue !== undefined ? parseInt(f.integerValue) :\n           f.booleanValue !== undefined ? f.booleanValue :\n           f.doubleValue !== undefined ? parseFloat(f.doubleValue) : null;\n  }\n  return item[key] !== undefined ? item[key] : null;\n};\n\nconst extractId = (item) => {\n  if (!item) return '';\n  if (item.id) return item.id;\n  if (item.name) return item.name.split('/').pop();\n  return '';\n};\n\nconst normalizePhone = (p) => {\n  if (!p) return '';\n  let s = String(p).replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  const m = s.match(/^(\\d{2,4})15(\\d{6,8})$/);\n  if (m) s = m[1] + '9' + m[2];\n  return '54' + s;\n};\n\n// ── Build reservations list (pedidos del bot no cuentan) ──\nconst reservationDocs = extractDocuments(reservationsResp);\nconst reservationsArray = reservationDocs.map(r => ({\n  id: extractId(r),\n  date: extractField(r, 'date'),\n  service: extractField(r, 'service'),\n  customerPhone: normalizePhone(extractField(r, 'customerPhone') || extractField(r, 'phone')),\n  source: extractField(r, 'source') || '',\n}));\n\nconst realReservations = reservationsArray.filter(r => r.source !== 'whatsapp_bot');\n\nconst rawPhone = parse.phone || $('Webhook1').item.json.body.data.key.remoteJid || '';\nconst phone = normalizePhone(rawPhone);\n\n// ── Duplicate check ──\nconst isDuplicate = phone && realReservations.some(r =>\n  r.customerPhone === phone &&\n  r.service === requestedService &&\n  r.date === requestedDate\n);\n\nif (isDuplicate) {\n  return [{\n    json: {\n      has_availability: false,\n      assigned_table: null,\n      assigned_table_name: null,\n      assigned_table_capacity: null,\n      free_tables: 0,\n      free_suitable_tables: 0,\n      total_tables: 0,\n      occupied_tables: 0,\n      requested_party_size: requestedPartySize,\n      requested_time: requestedTime,\n      requested_date: requestedDate,\n      requested_service: requestedService,\n      customerName: parse.customerName || '',\n      phone: phone,\n      notes: parse.notes || '',\n      mozo: parse.mozo || '',\n      reservation_estado: 'pendiente',\n      customerPhone: phone,\n      duplicate_error: true,\n    }\n  }];\n}\n\n// El recepcionista asigna la mesa: el bot NO agenda mesa automáticamente.\nreturn [{\n  json: {\n    has_availability: true,\n    assigned_table: null,\n    assigned_table_name: null,\n    assigned_table_capacity: null,\n    free_tables: 0,\n    free_suitable_tables: 0,\n    total_tables: 0,\n    occupied_tables: 0,\n    requested_party_size: requestedPartySize,\n    requested_time: requestedTime,\n    requested_date: requestedDate,\n    requested_service: requestedService,\n    customerName: parse.customerName || '',\n    phone: phone,\n    notes: parse.notes || '',\n    mozo: parse.mozo || '',\n    reservation_estado: 'pendiente',\n    customerPhone: phone,\n    duplicate_error: false,\n  }\n}];"
+        "jsCode": "const reservationsResp = $('Get Day Reservations').item.json;\nconst parse = $('Parse Time & Service').item.json;\n\nconst requestedPartySize = parse.partySize || 2;\nconst requestedDate = parse.reservation_date;\nconst requestedService = parse.reservation_service;\nconst requestedTime = parse.reservation_time;\n\n// ── Martes cerrado ──\nconst fp = (requestedDate || '').split('-');\nif (fp.length === 3) {\n  const fd = new Date(+fp[0], +fp[1] - 1, +fp[2]);\n  if (fd.getDay() === 2) {\n    return [{\n      json: {\n        closed_error: true,\n        closed_message: 'Lo sentimos, los martes estamos cerrados. Podés reservar otro día.',\n        has_availability: false,\n        assigned_table: null,\n        assigned_table_name: null,\n        assigned_table_capacity: null,\n        free_tables: 0,\n        free_suitable_tables: 0,\n        total_tables: 0,\n        occupied_tables: 0,\n        requested_party_size: requestedPartySize,\n        requested_time: requestedTime,\n        requested_date: requestedDate,\n        requested_service: requestedService,\n        customerName: parse.customerName || '',\n        phone: '',\n        notes: parse.notes || '',\n        mozo: parse.mozo || '',\n        reservation_estado: 'pendiente',\n        customerPhone: '',\n        duplicate_error: false,\n      }\n    }];\n  }\n}\n\n// ── Helpers ──\nconst extractDocuments = (data) => {\n  if (!data) return [];\n  if (Array.isArray(data)) return data.map(x => (x && x.document) ? x.document : x);\n  if (data.documents && Array.isArray(data.documents)) return data.documents;\n  if (data.items && Array.isArray(data.items)) return data.items;\n  if (data.body) return extractDocuments(data.body);\n  if (data.data) return extractDocuments(data.data);\n  return [];\n};\n\nconst extractField = (item, key) => {\n  if (!item) return null;\n  if (item.document) item = item.document;\n  if (item.fields && item.fields[key]) {\n    const f = item.fields[key];\n    return f.stringValue !== undefined ? f.stringValue :\n           f.integerValue !== undefined ? parseInt(f.integerValue) :\n           f.booleanValue !== undefined ? f.booleanValue :\n           f.doubleValue !== undefined ? parseFloat(f.doubleValue) : null;\n  }\n  return item[key] !== undefined ? item[key] : null;\n};\n\nconst extractId = (item) => {\n  if (!item) return '';\n  if (item.id) return item.id;\n  if (item.name) return item.name.split('/').pop();\n  return '';\n};\n\nconst normalizePhone = (p) => {\n  if (!p) return '';\n  let s = String(p).replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  const m = s.match(/^(\\d{2,4})15(\\d{6,8})$/);\n  if (m) s = m[1] + '9' + m[2];\n  return '54' + s;\n};\n\n// ── Build reservations list (pedidos del bot no cuentan) ──\nconst reservationDocs = extractDocuments(reservationsResp);\nconst reservationsArray = reservationDocs.map(r => ({\n  id: extractId(r),\n  date: extractField(r, 'date'),\n  service: extractField(r, 'service'),\n  customerPhone: normalizePhone(extractField(r, 'customerPhone') || extractField(r, 'phone')),\n  source: extractField(r, 'source') || '',\n  estado: extractField(r, 'estado') || '',\n}));\n\nconst realReservations = reservationsArray.filter(r =>\n  r.source !== 'whatsapp_bot' &&\n  !['cancelado', 'no_show', 'ausente'].includes(r.estado)\n);\n\nconst rawPhone = parse.phone || $('Webhook1').item.json.body.data.key.remoteJid || '';\nconst phone = normalizePhone(rawPhone);\n\n// ── Duplicate check ──\nconst isDuplicate = phone && realReservations.some(r =>\n  r.customerPhone === phone &&\n  r.service === requestedService &&\n  r.date === requestedDate\n);\n\nif (isDuplicate) {\n  return [{\n    json: {\n      has_availability: false,\n      assigned_table: null,\n      assigned_table_name: null,\n      assigned_table_capacity: null,\n      free_tables: 0,\n      free_suitable_tables: 0,\n      total_tables: 0,\n      occupied_tables: 0,\n      requested_party_size: requestedPartySize,\n      requested_time: requestedTime,\n      requested_date: requestedDate,\n      requested_service: requestedService,\n      customerName: parse.customerName || '',\n      phone: phone,\n      notes: parse.notes || '',\n      mozo: parse.mozo || '',\n      reservation_estado: 'pendiente',\n      customerPhone: phone,\n      duplicate_error: true,\n    }\n  }];\n}\n\n// El recepcionista asigna la mesa: el bot NO agenda mesa automáticamente.\nreturn [{\n  json: {\n    has_availability: true,\n    assigned_table: null,\n    assigned_table_name: null,\n    assigned_table_capacity: null,\n    free_tables: 0,\n    free_suitable_tables: 0,\n    total_tables: 0,\n    occupied_tables: 0,\n    requested_party_size: requestedPartySize,\n    requested_time: requestedTime,\n    requested_date: requestedDate,\n    requested_service: requestedService,\n    customerName: parse.customerName || '',\n    phone: phone,\n    notes: parse.notes || '',\n    mozo: parse.mozo || '',\n    reservation_estado: 'pendiente',\n    customerPhone: phone,\n    duplicate_error: false,\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1139,7 +1139,8 @@
     },
     {
       "parameters": {
-        "url": "https://firestore.googleapis.com/v1/projects/andimeet-93f62/databases/(default)/documents/reservations",
+        "method": "POST",
+        "url": "=https://firestore.googleapis.com/v1/projects/andimeet-93f62/databases/(default)/documents:runQuery",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1149,6 +1150,9 @@
             }
           ]
         },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ structuredQuery: { from: [{ collectionId: 'reservations' }], where: { fieldFilter: { field: { fieldPath: 'date' }, op: 'EQUAL', value: { stringValue: $('Parse Time & Service').item.json.reservation_date } } } } }) }}",
         "options": {
           "response": {
             "response": {
@@ -1204,7 +1208,7 @@
       "parameters": {
         "resource": "messages-api",
         "instanceName": "andimeet",
-        "remoteJid": "={{ $('Parse Time & Service').item.json.customerPhone || $('Webhook1').item.json.body.data.key.remoteJid }}",
+        "remoteJid": "={{ $('Webhook1').item.json.body.data.key.remoteJid }}",
         "messageText": "={{ `Lo siento, no hay mesas disponibles para ${$('Parse Time & Service').item.json.reservation_service === 'mediodia' ? 'mediodía' : 'cena'} el ${$('Parse Time & Service').item.json.reservation_date} para ${$('Parse Time & Service').item.json.partySize} personas. Podés probar otro horario o fecha.` }}",
         "options_message": {
           "delay": 1500
@@ -1662,7 +1666,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const parse = $('Parse Cancelación').item.json;\nconst raw = $('Get Reservas Para Cancelar').item.json;\n\nconst extractDocuments = (data) => {\n  if (!data) return [];\n  if (Array.isArray(data)) return data;\n  if (data.documents && Array.isArray(data.documents)) return data.documents;\n  if (data.items && Array.isArray(data.items)) return data.items;\n  if (data.body) return extractDocuments(data.body);\n  if (data.data) return extractDocuments(data.data);\n  return [];\n};\n\nconst extractField = (item, key) => {\n  if (!item) return null;\n  if (item.fields && item.fields[key]) {\n    const f = item.fields[key];\n    return f.stringValue !== undefined ? f.stringValue :\n           f.integerValue !== undefined ? parseInt(f.integerValue) :\n           f.booleanValue !== undefined ? f.booleanValue :\n           f.doubleValue !== undefined ? parseFloat(f.doubleValue) : null;\n  }\n  return item[key] !== undefined ? item[key] : null;\n};\n\nconst extractId = (item) => {\n  if (!item) return '';\n  if (item.id) return item.id;\n  if (item.name) return item.name.split('/').pop();\n  return '';\n};\n\nconst normalizePhone = (v) => String(v || '').replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n\nconst phone = normalizePhone(parse.cancel_telefono);\nconst nombre = String(parse.cancel_nombre || '').trim().toLowerCase();\n\nconst docs = extractDocuments(raw);\nconst candidates = docs\n  .map(d => ({\n    id: extractId(d),\n    customerPhone: normalizePhone(extractField(d, 'customerPhone') || extractField(d, 'phone')),\n    name: String(extractField(d, 'customerName') || '').trim().toLowerCase(),\n    estado: extractField(d, 'estado') || '',\n    date: extractField(d, 'date') || '',\n    tableId: extractField(d, 'tableId') || extractField(d, 'mesa_id') || '',\n    service: extractField(d, 'service') || '',\n    createdAt: extractField(d, 'createdAt') || '',\n  }))\n  .filter(r => ['pendiente', 'confirmada'].includes(r.estado))\n  .filter(r => (phone && r.customerPhone === phone) || (nombre && r.name === nombre));\n\ncandidates.sort((a, b) => (b.createdAt || '') > (a.createdAt || '') ? 1 : -1);\nconst found = candidates[0] || null;\n\nreturn [{\n  json: {\n    found: !!found,\n    reservation_id: found ? found.id : '',\n    mesa_res_id: found && found.tableId && found.date && found.service ? found.tableId + '_' + found.date + '_' + found.service : '',\n  }\n}];"
+        "jsCode": "const parse = $('Parse Cancelación').item.json;\nconst raw = $('Get Reservas Para Cancelar').item.json;\n\nconst extractDocuments = (data) => {\n  if (!data) return [];\n  if (Array.isArray(data)) return data;\n  if (data.documents && Array.isArray(data.documents)) return data.documents;\n  if (data.items && Array.isArray(data.items)) return data.items;\n  if (data.body) return extractDocuments(data.body);\n  if (data.data) return extractDocuments(data.data);\n  return [];\n};\n\nconst extractField = (item, key) => {\n  if (!item) return null;\n  if (item.document) item = item.document;\n  if (item.fields && item.fields[key]) {\n    const f = item.fields[key];\n    return f.stringValue !== undefined ? f.stringValue :\n           f.integerValue !== undefined ? parseInt(f.integerValue) :\n           f.booleanValue !== undefined ? f.booleanValue :\n           f.doubleValue !== undefined ? parseFloat(f.doubleValue) : null;\n  }\n  return item[key] !== undefined ? item[key] : null;\n};\n\nconst extractId = (item) => {\n  if (!item) return '';\n  if (item.id) return item.id;\n  if (item.name) return item.name.split('/').pop();\n  return '';\n};\n\nconst normalizePhone = (v) => {\n  if (!v) return '';\n  let s = String(v).replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  const m = s.match(/^(\\d{2,4})15(\\d{6,8})$/);\n  if (m) s = m[1] + '9' + m[2];\n  return '54' + s;\n};\n\nconst phone = normalizePhone(parse.cancel_telefono);\nconst nombre = String(parse.cancel_nombre || '').trim().toLowerCase();\n\nconst docs = extractDocuments(raw);\nconst candidates = docs\n  .map(d => ({\n    id: extractId(d),\n    customerPhone: normalizePhone(extractField(d, 'customerPhone') || extractField(d, 'phone')),\n    name: String(extractField(d, 'customerName') || '').trim().toLowerCase(),\n    estado: extractField(d, 'estado') || '',\n    date: extractField(d, 'date') || '',\n    tableId: extractField(d, 'tableId') || extractField(d, 'mesa_id') || '',\n    service: extractField(d, 'service') || '',\n    createdAt: extractField(d, 'createdAt') || '',\n  }))\n  .filter(r => ['pendiente', 'confirmada'].includes(r.estado))\n  .filter(r => (phone && r.customerPhone === phone) || (nombre && r.name === nombre));\n\ncandidates.sort((a, b) => (b.createdAt || '') > (a.createdAt || '') ? 1 : -1);\nconst found = candidates[0] || null;\n\nreturn [{\n  json: {\n    found: !!found,\n    reservation_id: found ? found.id : '',\n    mesa_res_id: found && found.tableId && found.date && found.service ? found.tableId + '_' + found.date + '_' + found.service : '',\n  }\n}];"
       },
       "id": "cancel-find-node",
       "name": "Buscar Reserva Cliente",
@@ -1776,6 +1780,132 @@
           "name": "Evolution account"
         }
       }
+    },
+    {
+      "parameters": {
+        "operation": "incr",
+        "key": "=msg_{{ $('Webhook1').item.json.body.data.key.id }}",
+        "expire": true,
+        "ttl": 86400
+      },
+      "id": "dedupe-incr-001",
+      "name": "Dedupe Mensaje (INCR)",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -79520,
+        -3904
+      ],
+      "credentials": {
+        "redis": {
+          "id": "YjKGAHBOZUiS6oYB",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ Object.values($json)[0] }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              },
+              "id": "dedupe-is-new"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "dedupe-check-001",
+      "name": "¿Mensaje nuevo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -79392,
+        -3904
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "dedupe-skip-001",
+      "name": "Dup: mensaje repetido",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -79392,
+        -3712
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error === undefined }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "name": "filter.operator.true"
+              },
+              "id": "cancel-no-error"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cancel-check-001",
+      "name": "¿Canceló ok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -77104,
+        -2320
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "andimeet",
+        "remoteJid": "={{ $('Webhook1').item.json.body.data.key.remoteJid }}",
+        "messageText": "Lo sentimos, no pudimos cancelar tu reserva en este momento. Por favor intentá de nuevo en unos minutos.",
+        "options_message": {
+          "delay": 1500
+        }
+      },
+      "id": "cancel-send-error-001",
+      "name": "Send Cancel Error",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        -76816,
+        -2320
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "QA2TB3jQdXMkKDOZ",
+          "name": "Evolution account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -1784,7 +1914,7 @@
       "main": [
         [
           {
-            "node": "Switch1",
+            "node": "Dedupe Mensaje (INCR)",
             "type": "main",
             "index": 0
           }
@@ -2446,7 +2576,7 @@
       "main": [
         [
           {
-            "node": "Liberar Mesa de Reserva",
+            "node": "¿Canceló ok?",
             "type": "main",
             "index": 0
           }
@@ -2469,6 +2599,53 @@
         [
           {
             "node": "Send Cancel WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedupe Mensaje (INCR)": {
+      "main": [
+        [
+          {
+            "node": "¿Mensaje nuevo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Mensaje nuevo?": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Dup: mensaje repetido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Canceló ok?": {
+      "main": [
+        [
+          {
+            "node": "Liberar Mesa de Reserva",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Cancel Error",
             "type": "main",
             "index": 0
           }

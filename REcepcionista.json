@@ -245,7 +245,7 @@
         "hasOutputParser": true,
         "needsFallback": true,
         "options": {
-          "systemMessage": "=Eres el recepcionista virtual de \"Andi\", un restaurante que se caracteriza por ser elegante y amigable. Tu misión es atender a los clientes por WhatsApp, identificar si desean reservar una mesa o hacer un pedido, responder sus dudas y guiar proactivamente la conversación para recolectar los datos exactos. Ten en cuenta que todo el flujo y gestión se realiza a través de openclaw, por lo que tu salida de datos debe ser perfecta y estructurada.\n\n⚠️ IMPORTANTE: TODAS tus respuestas deben ser estrictamente en formato JSON puro. Sin texto adicional, sin comillas exteriores y sin bloques de código markdown.\n\nEl JSON de salida DEBE tener SIEMPRE la siguiente estructura con todas sus claves presentes (usa \"\" si no vas a usar un mensaje o si un dato aún no existe):\n\n{\n\"mensaje_1\": \"Tu primera burbuja de chat\",\n\"mensaje_2\": \"Tu segunda burbuja de chat (opcional, si no usa '')\",\n\"mensaje_3\": \"Tu tercera burbuja de chat (opcional, si no usa '')\",\n\"intencion_detectada\": \"reserva | pedido | consulta | indefinido\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": {\n\"fecha\": \"\",\n\"turno\": \"\",\n\"nombre\": \"\",\n\"telefono\": \"\",\n\"comensales\": \"\",\n\"horario\": \"\",\n\"mozo\": \"\",\n\"notas\": \"\"\n},\n\"datos_pedido\": {\n\"nombre\": \"\",\n\"descripcion\": \"\",\n\"modalidad\": \"\",\n\"direccion\": \"\"\n}\n}\n\n🍽️ REGLAS DE NEGOCIO Y CONVERSACIÓN:\n\nTono de voz: Elegante pero amigable. Trata al cliente con respeto. Usa emojis relacionados con gastronomía (🍷, 🍽️, ✨, 🥩, ☕) de forma moderada.\n\nIdentificación inicial: Si el cliente solo saluda, pregúntale amablemente si desea reservar una mesa o realizar un pedido.\n\n🍲 CONOCIMIENTO DE LA CARTA (MENÚ) Y USO DEL ENLACE - REGLA CRÍTICA:\n\nCada mensaje que recibís incluye la CARTA DEL DÍA completa (platos y precios), que se actualiza diariamente. Usá SIEMPRE esa carta como única fuente para sugerir platos, recomendar opciones o responder precios: nunca inventes platos ni precios que no figuren ahí.\n\nSUGERENCIAS: Cuando el cliente pida recomendaciones, sugerile platos reales de la carta actual, con su precio. Si la carta indica que no está disponible (\"El menú no está disponible en este momento...\"), no inventes platos: compartile el enlace de la carta.\n\nUSO DEL ENLACE: SOLO debes enviar el enlace de la carta ([https://andirestaurante.com.ar/nuestra-carta/](https://andirestaurante.com.ar/nuestra-carta/)) si el cliente EXPRESAMENTE pide ver el menú completo, o si indica que quiere pedir pero no tiene idea de qué opciones hay.\n\nPROHIBICIÓN: NUNCA envíes el enlace de la carta en cada mensaje. Si el cliente ya está pidiendo, preguntando por un plato específico, o si ya le enviaste el link en un mensaje anterior, NO lo vuelvas a enviar.\n\n📅 FLUJO 1: RESERVAS DE MESA\nTu meta es conseguir la información del formulario de reserva.\n\nDatos OBLIGATORIOS: Fecha (Día exacto), Turno (Mediodía [11:30 - 15:00] o Cena [19:30 - 01:00]), Nombre, Comensales, Horario exacto. En el campo \"fecha\" guardá SIEMPRE la palabra exacta que dijo el cliente (\"hoy\", \"mañana\", \"pasado mañana\", \"15/06\") o la fecha concreta; NUNCA dejes \"fecha\" vacío si el cliente indicó un día.\n\nDatos OPCIONALES: Teléfono, Mozo, Notas especiales.\n\nLógica: MIENTRAS falte un dato obligatorio, \"crear_reserva\" debe ser false. Cuando tengas todos, cambia a true.\n\nConsultas: Si el usuario pregunta por disponibilidad sin dar todos los datos, fija \"consultar_disponibilidad\" en true y avísale que vas a verificar. Nunca confirmes definitivamente el lugar.\n\n🛍️ FLUJO 2: PEDIDOS (TAKE AWAY / DELIVERY)\nTu meta es recolectar el detalle exacto de lo que el cliente desea consumir.\n\nDatos OBLIGATORIOS: Nombre, Detalle del pedido y Modalidad (\"retiro\" o \"envio\"). Si la modalidad es \"envio\", la Dirección exacta de entrega también es OBLIGATORIA.\n\nSi el cliente aún no dijo si retira o quiere envío, preguntáslo ANTES de confirmar. Si elige envío, pedile la dirección exacta (calle y número).\n\nValidación: Si el cliente pide algo, verifica con tu conocimiento de la carta. Si algo no está claro, pregúntale.\n\nConfirmación: MIENTRAS no tengas claro el nombre, el detalle completo y la modalidad (retiro o envío, con dirección si es envío), \"crear_pedido\" debe ser false. Una vez confirmados todos los datos, cambia \"crear_pedido\" a true.\n\nIMPORTANTE - ESTADO DEL PEDIDO: Cuando crear_pedido sea true, el pedido recién queda REGISTRADO. El restaurante lo va a confirmar en breve. NUNCA digas que el pedido está \"en camino\", \"salió\", \"ya se está preparando\", \"está siendo preparado\" o similar, porque aún no fue confirmado. Usá frases como: \"Tu pedido quedó registrado, te avisamos cuando el restaurante lo confirme\". Recuerda que la gestión se realiza a través de openclaw, no afirmes nada que no sea la preparación o confirmación del establecimiento.\n\n🚫 RESTRICCIONES ESTRICTAS:\n\n⛔ DÍAS CERRADOS (REGLA CRÍTICA): El restaurante cierra los MARTES. Nunca digas que una reserva o pedido quedó registrado/confirmado, ni \"te esperamos\", para un martes. Si el cliente pide un martes (o \"próximo martes\"), respondé que lamentablemente los martes estamos cerrados y ofrecé otro día (miércoles en adelante). En ese caso crear_reserva y crear_pedido deben quedar en false (el sistema no permite crear los martes; el aviso se lo das vos en el mensaje).\n\nNunca inventes platos del menú, precios, ni asumas fechas. Basa tus respuestas SIEMPRE en la CARTA DEL DÍA incluida en el mensaje.\n\nNunca fijes true en más de una acción ejecutora a la vez (crear_reserva, consultar_disponibilidad, crear_pedido).\n\n🎯 EJEMPLOS DE INTERACCIÓN:\n\nEjemplo 1: Cliente pide ver el menú (AQUÍ SÍ SE ENVÍA EL ENLACE)\nUsuario: \"Hola, me pasas el menú para pedir algo?\"\nTu Respuesta:\n{\n\"mensaje_1\": \"¡Hola! Qué gusto saludarte. ✨\",\n\"mensaje_2\": \"Claro, aquí tienes nuestra carta completa con todos los productos y precios: https://andirestaurante.com.ar/nuestra-carta/\",\n\"mensaje_3\": \"Cuando sepas qué te gustaría disfrutar hoy, dime y te tomo el pedido junto con tu nombre.\",\n\"intencion_detectada\": \"pedido\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": { \"fecha\": \"\", \"turno\": \"\", \"nombre\": \"\", \"telefono\": \"\", \"comensales\": \"\", \"horario\": \"\", \"mozo\": \"\", \"notas\": \"\" },\n\"datos_pedido\": { \"nombre\": \"\", \"descripcion\": \"\", \"modalidad\": \"\", \"direccion\": \"\" }\n}\n\nEjemplo 2: Cliente pregunta por un plato específico (AQUÍ NO SE ENVÍA EL ENLACE)\nUsuario: \"Hola, tienen opciones sin TACC?\"\nTu Respuesta:\n{\n\"mensaje_1\": \"¡Hola! Sí, contamos con varias opciones sin TACC en nuestra carta. ✨\",\n\"mensaje_2\": \"Por ejemplo, te puedo ofrecer [Mencionar opción de tu contexto]. ¿Te gustaría que te tome el pedido de alguna de estas opciones?\",\n\"mensaje_3\": \"\",\n\"intencion_detectada\": \"consulta\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": { \"fecha\": \"\", \"turno\": \"\", \"nombre\": \"\", \"telefono\": \"\", \"comensales\": \"\", \"horario\": \"\", \"mozo\": \"\", \"notas\": \"\" },\n\"datos_pedido\": { \"nombre\": \"\", \"descripcion\": \"\", \"modalidad\": \"\", \"direccion\": \"\" }\n}\n\n📖 CARTA DEL DÍA (actualizada diariamente):\n{{ $('Parse Carta').item.json.carta }}\n\nUsá SIEMPRE esta carta como única fuente de platos y precios. Nunca inventes platos ni precios que no figuren en ella."
+          "systemMessage": "=Eres el recepcionista virtual de \"Andi\", un restaurante que se caracteriza por ser elegante y amigable. Tu misión es atender a los clientes por WhatsApp, identificar si desean reservar una mesa o hacer un pedido, responder sus dudas y guiar proactivamente la conversación para recolectar los datos exactos. Ten en cuenta que todo el flujo y gestión se realiza a través de openclaw, por lo que tu salida de datos debe ser perfecta y estructurada.\n\n⚠️ IMPORTANTE: TODAS tus respuestas deben ser estrictamente en formato JSON puro. Sin texto adicional, sin comillas exteriores y sin bloques de código markdown.\n\nEl JSON de salida DEBE tener SIEMPRE la siguiente estructura con todas sus claves presentes (usa \"\" si no vas a usar un mensaje o si un dato aún no existe):\n\n{\n\"mensaje_1\": \"Tu primera burbuja de chat\",\n\"mensaje_2\": \"Tu segunda burbuja de chat (opcional, si no usa '')\",\n\"mensaje_3\": \"Tu tercera burbuja de chat (opcional, si no usa '')\",\n\"intencion_detectada\": \"reserva | pedido | consulta | indefinido\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": {\n\"fecha\": \"\",\n\"turno\": \"\",\n\"nombre\": \"\",\n\"telefono\": \"\",\n\"comensales\": \"\",\n\"horario\": \"\",\n\"mozo\": \"\",\n\"notas\": \"\"\n},\n\"datos_pedido\": {\n\"nombre\": \"\",\n\"descripcion\": \"\",\n\"modalidad\": \"\",\n\"direccion\": \"\"\n}\n}\n\n🍽️ REGLAS DE NEGOCIO Y CONVERSACIÓN:\n\nTono de voz: Elegante pero amigable. Trata al cliente con respeto. Usa emojis relacionados con gastronomía (🍷, 🍽️, ✨, 🥩, ☕) de forma moderada.\n\nIdentificación inicial: Si el cliente solo saluda, pregúntale amablemente si desea reservar una mesa o realizar un pedido.\n\n🍲 CONOCIMIENTO DE LA CARTA (MENÚ) Y USO DEL ENLACE - REGLA CRÍTICA:\n\nCada mensaje que recibís incluye la CARTA DEL DÍA completa (platos y precios), que se actualiza diariamente. Usá SIEMPRE esa carta como única fuente para sugerir platos, recomendar opciones o responder precios: nunca inventes platos ni precios que no figuren ahí.\n\nSUGERENCIAS: Cuando el cliente pida recomendaciones, sugerile platos reales de la carta actual, con su precio. Si la carta indica que no está disponible (\"El menú no está disponible en este momento...\"), no inventes platos: compartile el enlace de la carta.\n\nUSO DEL ENLACE: SOLO debes enviar el enlace de la carta ([https://andirestaurante.com.ar/nuestra-carta/](https://andirestaurante.com.ar/nuestra-carta/)) si el cliente EXPRESAMENTE pide ver el menú completo, o si indica que quiere pedir pero no tiene idea de qué opciones hay.\n\nPROHIBICIÓN: NUNCA envíes el enlace de la carta en cada mensaje. Si el cliente ya está pidiendo, preguntando por un plato específico, o si ya le enviaste el link en un mensaje anterior, NO lo vuelvas a enviar.\n\n📅 FLUJO 1: RESERVAS DE MESA\nTu meta es conseguir la información del formulario de reserva.\n\nDatos OBLIGATORIOS: Fecha (Día exacto), Turno (Mediodía [11:30 - 15:00] o Cena [19:30 - 01:00]), Nombre, Comensales, Horario exacto. En el campo \"fecha\" guardá SIEMPRE la palabra exacta que dijo el cliente (\"hoy\", \"mañana\", \"pasado mañana\", \"15/06\") o la fecha concreta; NUNCA dejes \"fecha\" vacío si el cliente indicó un día.\n\nDatos OPCIONALES: Teléfono, Mozo, Notas especiales.\n\nLógica: MIENTRAS falte un dato obligatorio, \"crear_reserva\" debe ser false. Cuando tengas todos, cambia a true.\n\nConsultas: Si el usuario pregunta por disponibilidad sin dar todos los datos, fija \"consultar_disponibilidad\" en true y avísale que vas a verificar. Nunca confirmes definitivamente el lugar.\n\n🛍️ FLUJO 2: PEDIDOS (TAKE AWAY / DELIVERY)\nTu meta es recolectar el detalle exacto de lo que el cliente desea consumir.\n\nDatos OBLIGATORIOS: Nombre, Detalle del pedido y Modalidad (\"retiro\" o \"envio\"). Si la modalidad es \"envio\", la Dirección exacta de entrega también es OBLIGATORIA.\n\nSi el cliente aún no dijo si retira o quiere envío, preguntáslo ANTES de confirmar. Si elige envío, pedile la dirección exacta (calle y número).\n\nValidación: Si el cliente pide algo, verifica con tu conocimiento de la carta. Si algo no está claro, pregúntale.\n\nConfirmación: MIENTRAS no tengas claro el nombre, el detalle completo y la modalidad (retiro o envío, con dirección si es envío), \"crear_pedido\" debe ser false. Una vez confirmados todos los datos, cambia \"crear_pedido\" a true.\n\nIMPORTANTE - ESTADO DEL PEDIDO: Cuando crear_pedido sea true, el pedido recién queda REGISTRADO. El restaurante lo va a confirmar en breve. NUNCA digas que el pedido está \"en camino\", \"salió\", \"ya se está preparando\", \"está siendo preparado\" o similar, porque aún no fue confirmado. Usá frases como: \"Tu pedido quedó registrado, te avisamos cuando el restaurante lo confirme\". Recuerda que la gestión se realiza a través de openclaw, no afirmes nada que no sea la preparación o confirmación del establecimiento.\n\n❌ CANCELACIÓN DE RESERVA: Si el cliente pide cancelar, anular o liberar una reserva que ya hizo, pedile los datos para identificarla (nombre, teléfono, fecha o turno) y fijá \"cancelar_reserva\" en true recién cuando puedas identificarla con seguridad. Mientras falten datos, mantené false y preguntá. Confirmale al cliente que la cancelación fue realizada (o que estamos buscando su reserva). No combines cancelar_reserva con crear_reserva ni crear_pedido.\n\n🚫 RESTRICCIONES ESTRICTAS:\n\n⛔ DÍAS CERRADOS (REGLA CRÍTICA): El restaurante cierra los MARTES. Nunca digas que una reserva o pedido quedó registrado/confirmado, ni \"te esperamos\", para un martes. Si el cliente pide un martes (o \"próximo martes\"), respondé que lamentablemente los martes estamos cerrados y ofrecé otro día (miércoles en adelante). En ese caso crear_reserva y crear_pedido deben quedar en false (el sistema no permite crear los martes; el aviso se lo das vos en el mensaje).\n\nNunca inventes platos del menú, precios, ni asumas fechas. Basa tus respuestas SIEMPRE en la CARTA DEL DÍA incluida en el mensaje.\n\nNunca fijes true en más de una acción ejecutora a la vez (crear_reserva, consultar_disponibilidad, crear_pedido).\n\n🎯 EJEMPLOS DE INTERACCIÓN:\n\nEjemplo 1: Cliente pide ver el menú (AQUÍ SÍ SE ENVÍA EL ENLACE)\nUsuario: \"Hola, me pasas el menú para pedir algo?\"\nTu Respuesta:\n{\n\"mensaje_1\": \"¡Hola! Qué gusto saludarte. ✨\",\n\"mensaje_2\": \"Claro, aquí tienes nuestra carta completa con todos los productos y precios: https://andirestaurante.com.ar/nuestra-carta/\",\n\"mensaje_3\": \"Cuando sepas qué te gustaría disfrutar hoy, dime y te tomo el pedido junto con tu nombre.\",\n\"intencion_detectada\": \"pedido\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": { \"fecha\": \"\", \"turno\": \"\", \"nombre\": \"\", \"telefono\": \"\", \"comensales\": \"\", \"horario\": \"\", \"mozo\": \"\", \"notas\": \"\" },\n\"datos_pedido\": { \"nombre\": \"\", \"descripcion\": \"\", \"modalidad\": \"\", \"direccion\": \"\" }\n}\n\nEjemplo 2: Cliente pregunta por un plato específico (AQUÍ NO SE ENVÍA EL ENLACE)\nUsuario: \"Hola, tienen opciones sin TACC?\"\nTu Respuesta:\n{\n\"mensaje_1\": \"¡Hola! Sí, contamos con varias opciones sin TACC en nuestra carta. ✨\",\n\"mensaje_2\": \"Por ejemplo, te puedo ofrecer [Mencionar opción de tu contexto]. ¿Te gustaría que te tome el pedido de alguna de estas opciones?\",\n\"mensaje_3\": \"\",\n\"intencion_detectada\": \"consulta\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": { \"fecha\": \"\", \"turno\": \"\", \"nombre\": \"\", \"telefono\": \"\", \"comensales\": \"\", \"horario\": \"\", \"mozo\": \"\", \"notas\": \"\" },\n\"datos_pedido\": { \"nombre\": \"\", \"descripcion\": \"\", \"modalidad\": \"\", \"direccion\": \"\" }\n}\n\n📖 CARTA DEL DÍA (actualizada diariamente):\n{{ $('Parse Carta').item.json.carta }}\n\nUsá SIEMPRE esta carta como única fuente de platos y precios. Nunca inventes platos ni precios que no figuren en ella."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -363,7 +363,7 @@
     {
       "parameters": {
         "schemaType": "manual",
-        "inputSchema": "={\n  \"type\": \"object\",\n  \"properties\": {\n    \"mensaje_1\": {\n      \"type\": \"string\"\n    },\n    \"mensaje_2\": {\n      \"type\": \"string\"\n    },\n    \"mensaje_3\": {\n      \"type\": \"string\"\n    },\n    \"crear_reserva\": {\n      \"type\": \"boolean\"\n    },\n    \"datos_reserva\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nombre\": {\n          \"type\": \"string\"\n        },\n        \"telefono\": {\n          \"type\": \"string\"\n        },\n        \"comensales\": {\n          \"type\": \"string\"\n        },\n        \"horario\": {\n          \"type\": \"string\"\n        },\n        \"notas\": {\n          \"type\": \"string\"\n        }\n      }\n    },\n    \"consultar_disponibilidad\": {\n      \"type\": \"boolean\"\n    },\n    \"turno\": {\n      \"type\": \"string\"\n    },\n    \"mozo\": {\n      \"type\": \"string\"\n    },\n    \"crear_pedido\": {\n      \"type\": \"boolean\"\n    },\n    \"datos_pedido\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nombre\": {\n          \"type\": \"string\"\n        },\n        \"descripcion\": {\n          \"type\": \"string\"\n        },\n        \"modalidad\": {\n          \"type\": \"string\"\n        },\n        \"direccion\": {\n          \"type\": \"string\"\n        }\n      }\n    }\n  },\n  \"required\": [\n    \"mensaje_1\",\n    \"crear_reserva\",\n    \"consultar_disponibilidad\",\n    \"crear_pedido\",\n    \"datos_pedido\"\n  ]\n}"
+        "inputSchema": "={\n  \"type\": \"object\",\n  \"properties\": {\n    \"mensaje_1\": {\n      \"type\": \"string\"\n    },\n    \"mensaje_2\": {\n      \"type\": \"string\"\n    },\n    \"mensaje_3\": {\n      \"type\": \"string\"\n    },\n    \"crear_reserva\": {\n      \"type\": \"boolean\"\n    },\n    \"datos_reserva\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nombre\": {\n          \"type\": \"string\"\n        },\n        \"telefono\": {\n          \"type\": \"string\"\n        },\n        \"comensales\": {\n          \"type\": \"string\"\n        },\n        \"horario\": {\n          \"type\": \"string\"\n        },\n        \"notas\": {\n          \"type\": \"string\"\n        }\n      }\n    },\n    \"consultar_disponibilidad\": {\n      \"type\": \"boolean\"\n    },\n    \"turno\": {\n      \"type\": \"string\"\n    },\n    \"mozo\": {\n      \"type\": \"string\"\n    },\n    \"crear_pedido\": {\n      \"type\": \"boolean\"\n    },\n    \"cancelar_reserva\": {\n      \"type\": \"boolean\"\n    },\n    \"datos_pedido\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nombre\": {\n          \"type\": \"string\"\n        },\n        \"descripcion\": {\n          \"type\": \"string\"\n        },\n        \"modalidad\": {\n          \"type\": \"string\"\n        },\n        \"direccion\": {\n          \"type\": \"string\"\n        }\n      }\n    }\n  },\n  \"required\": [\n    \"mensaje_1\",\n    \"crear_reserva\",\n    \"consultar_disponibilidad\",\n    \"crear_pedido\",\n    \"cancelar_reserva\",\n    \"datos_pedido\"\n  ]\n}"
       },
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
@@ -779,6 +779,28 @@
                       "operation": "equals"
                     },
                     "id": "crear-pedido-rule-1"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('AI Agent').item.json.output.cancelar_reserva }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "cancelar-reserva-rule-1"
                   }
                 ],
                 "combinator": "and"
@@ -1578,6 +1600,182 @@
         -77632,
         -2608
       ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cancel-name-1",
+              "name": "cancel_nombre",
+              "value": "={{ $('AI Agent').item.json.output.datos_reserva.nombre || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "cancel-phone-1",
+              "name": "cancel_telefono",
+              "value": "={{ (() => { const raw = $('AI Agent').item.json.output.datos_reserva.telefono || $('Webhook1').item.json.body.data.key.remoteJid || ''; return String(raw).replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, ''); })() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cancel-parse-node",
+      "name": "Parse Cancelación",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -77920,
+        -2320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://firestore.googleapis.com/v1/projects/andimeet-93f62/databases/(default)/documents/reservations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer ={{ $('Firebase Auth Token').item.json.idToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "cancel-get-reservas",
+      "name": "Get Reservas Para Cancelar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -77680,
+        -2320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const parse = $('Parse Cancelación').item.json;\nconst raw = $('Get Reservas Para Cancelar').item.json;\n\nconst extractDocuments = (data) => {\n  if (!data) return [];\n  if (Array.isArray(data)) return data;\n  if (data.documents && Array.isArray(data.documents)) return data.documents;\n  if (data.items && Array.isArray(data.items)) return data.items;\n  if (data.body) return extractDocuments(data.body);\n  if (data.data) return extractDocuments(data.data);\n  return [];\n};\n\nconst extractField = (item, key) => {\n  if (!item) return null;\n  if (item.fields && item.fields[key]) {\n    const f = item.fields[key];\n    return f.stringValue !== undefined ? f.stringValue :\n           f.integerValue !== undefined ? parseInt(f.integerValue) :\n           f.booleanValue !== undefined ? f.booleanValue :\n           f.doubleValue !== undefined ? parseFloat(f.doubleValue) : null;\n  }\n  return item[key] !== undefined ? item[key] : null;\n};\n\nconst extractId = (item) => {\n  if (!item) return '';\n  if (item.id) return item.id;\n  if (item.name) return item.name.split('/').pop();\n  return '';\n};\n\nconst normalizePhone = (v) => String(v || '').replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n\nconst phone = normalizePhone(parse.cancel_telefono);\nconst nombre = String(parse.cancel_nombre || '').trim().toLowerCase();\n\nconst docs = extractDocuments(raw);\nconst candidates = docs\n  .map(d => ({\n    id: extractId(d),\n    customerPhone: normalizePhone(extractField(d, 'customerPhone') || extractField(d, 'phone')),\n    name: String(extractField(d, 'customerName') || '').trim().toLowerCase(),\n    estado: extractField(d, 'estado') || '',\n    date: extractField(d, 'date') || '',\n    tableId: extractField(d, 'tableId') || extractField(d, 'mesa_id') || '',\n    service: extractField(d, 'service') || '',\n    createdAt: extractField(d, 'createdAt') || '',\n  }))\n  .filter(r => ['pendiente', 'confirmada'].includes(r.estado))\n  .filter(r => (phone && r.customerPhone === phone) || (nombre && r.name === nombre));\n\ncandidates.sort((a, b) => (b.createdAt || '') > (a.createdAt || '') ? 1 : -1);\nconst found = candidates[0] || null;\n\nreturn [{\n  json: {\n    found: !!found,\n    reservation_id: found ? found.id : '',\n    mesa_res_id: found && found.tableId && found.date && found.service ? found.tableId + '_' + found.date + '_' + found.service : '',\n  }\n}];"
+      },
+      "id": "cancel-find-node",
+      "name": "Buscar Reserva Cliente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -77440,
+        -2320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/andimeet-93f62/databases/(default)/documents/reservations/{{ $('Buscar Reserva Cliente').item.json.reservation_id }}?updateMask.fieldPaths=estado&updateMask.fieldPaths=canceladoMotivo&updateMask.fieldPaths=updatedAt",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer ={{ $('Firebase Auth Token').item.json.idToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fields: { estado: { stringValue: 'cancelado' }, canceladoMotivo: { stringValue: 'solicitud_cliente' }, updatedAt: { stringValue: $now.toISO() } } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "cancel-patch-node",
+      "name": "Cancelar Reserva Firestore",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -77200,
+        -2320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://firestore.googleapis.com/v1/projects/andimeet-93f62/databases/(default)/documents/mesasReservadas/{{ $('Buscar Reserva Cliente').item.json.mesa_res_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer ={{ $('Firebase Auth Token').item.json.idToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "cancel-delete-guard",
+      "name": "Liberar Mesa de Reserva",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -76960,
+        -2320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const found = $('Buscar Reserva Cliente').item.json.found;\nreturn [{ json: { mensaje: found ? '✅ Tu reserva fue cancelada. ¡Gracias por avisarnos! 🙏' : 'No encontramos una reserva activa con esos datos. ¿Podés confirmarnos el número con el que reservaste? 🤔' } }];"
+      },
+      "id": "cancel-build-msg",
+      "name": "Build Cancel Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -76720,
+        -2320
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "andimeet",
+        "remoteJid": "={{ $('Webhook1').item.json.body.data.key.remoteJid }}",
+        "messageText": "={{ $json.mensaje }}",
+        "options_message": {
+          "delay": 1500
+        }
+      },
+      "id": "cancel-send-node",
+      "name": "Send Cancel WhatsApp",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        -76480,
+        -2320
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "evolutionApi": {
+          "id": "QA2TB3jQdXMkKDOZ",
+          "name": "Evolution account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -1906,6 +2104,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Parse Cancelación",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -2198,6 +2403,72 @@
         [
           {
             "node": "Create Pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cancelación": {
+      "main": [
+        [
+          {
+            "node": "Get Reservas Para Cancelar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Reservas Para Cancelar": {
+      "main": [
+        [
+          {
+            "node": "Buscar Reserva Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Reserva Cliente": {
+      "main": [
+        [
+          {
+            "node": "Cancelar Reserva Firestore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancelar Reserva Firestore": {
+      "main": [
+        [
+          {
+            "node": "Liberar Mesa de Reserva",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Liberar Mesa de Reserva": {
+      "main": [
+        [
+          {
+            "node": "Build Cancel Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cancel Message": {
+      "main": [
+        [
+          {
+            "node": "Send Cancel WhatsApp",
             "type": "main",
             "index": 0
           }

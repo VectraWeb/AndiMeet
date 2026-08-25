@@ -31,7 +31,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $json.body.data.messageType }}",
+                    "leftValue": "={{ ($json.body?.data?.messageType || $json.body?.data?.message?.messageType) }}",
                     "rightValue": "conversation",
                     "operator": {
                       "type": "string",
@@ -56,7 +56,7 @@
                 "conditions": [
                   {
                     "id": "de9f7833-dbee-4ffe-bdc5-2043a0cbcd0f",
-                    "leftValue": "={{ $json.body.data.messageType }}",
+                    "leftValue": "={{ ($json.body?.data?.messageType || $json.body?.data?.message?.messageType) }}",
                     "rightValue": "audioMessage",
                     "operator": {
                       "type": "string",
@@ -72,7 +72,10 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Texto"
+        }
       },
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
@@ -139,6 +142,15 @@
               "operator": {
                 "type": "string",
                 "operation": "notEquals"
+              }
+            },
+            {
+              "id": "filter-fromme-001",
+              "leftValue": "={{ $json.body?.data?.key?.fromMe }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
               }
             }
           ],
@@ -1933,6 +1945,13 @@
         [
           {
             "node": "Obter m dia em base",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Filter1",
             "type": "main",
             "index": 0
           }

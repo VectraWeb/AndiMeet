@@ -14,31 +14,39 @@ const TABLE_DIMS = {
 };
 
 // Resuelve una posición arrastrada para que no se superponga con otros sectores
-// (se empuja hacia el lado que requiera menos desplazamiento)
+// (se empuja hacia el lado que requiera menos desplazamiento) y queda
+// SIEMPRE dentro del lienzo. Repite el ciclo tras clampear: el clamp puede
+// volver a meter el sector encima de otro cuando el empuje salía del canvas.
 function resolveSectorDrag(x, y, w, h, others) {
-  let nx = x;
-  let ny = y;
-  for (let iter = 0; iter <= others.length; iter++) {
-    let pushed = false;
-    for (const o of others) {
-      if (!rectsOverlap({ x: nx, y: ny, w, h }, o)) continue;
-      const ox = Math.min(nx + w, o.x + o.w) - Math.max(nx, o.x);
-      const oy = Math.min(ny + h, o.y + o.h) - Math.max(ny, o.y);
-      if (ox <= oy) {
-        const dRight = o.x + o.w - nx;
-        const dLeft = nx + w - o.x;
-        nx += dRight <= dLeft ? dRight : -dLeft;
-      } else {
-        const dDown = o.y + o.h - ny;
-        const dUp = ny + h - o.y;
-        ny += dDown <= dUp ? dDown : -dUp;
+  let out = { x, y };
+  const clamp = (p) => ({
+    x: Math.max(0, Math.min(CANVAS_W - w, p.x)),
+    y: Math.max(0, Math.min(CANVAS_H - h, p.y)),
+  });
+  for (let pass = 0; pass < 2; pass++) {
+    out = clamp(out);
+    for (let iter = 0; iter <= others.length; iter++) {
+      let pushed = false;
+      for (const o of others) {
+        if (!rectsOverlap({ x: out.x, y: out.y, w, h }, o)) continue;
+        const ox = Math.min(out.x + w, o.x + o.w) - Math.max(out.x, o.x);
+        const oy = Math.min(out.y + h, o.y + o.h) - Math.max(out.y, o.y);
+        if (ox <= oy) {
+          const dRight = o.x + o.w - out.x;
+          const dLeft = out.x + w - o.x;
+          out = { ...out, x: out.x + (dRight <= dLeft ? dRight : -dLeft) };
+        } else {
+          const dDown = o.y + o.h - out.y;
+          const dUp = out.y + h - o.y;
+          out = { ...out, y: out.y + (dDown <= dUp ? dDown : -dUp) };
+        }
+        pushed = true;
+        break;
       }
-      pushed = true;
-      break;
+      if (!pushed) break;
     }
-    if (!pushed) break;
   }
-  return { x: nx, y: ny };
+  return clamp(out);
 }
 
 // Resuelve un redimensionado para que no se superponga: recorta el tamaño
@@ -62,6 +70,11 @@ function resolveSectorResize(x, y, w, h, handle, others) {
     }
     if (!clamped) break;
   }
+  // Siempre dentro del lienzo, aunque el otro sector esté pegado al borde
+  out.w = Math.max(80, Math.min(out.w, CANVAS_W));
+  out.h = Math.max(60, Math.min(out.h, CANVAS_H));
+  out.x = Math.max(0, Math.min(out.x, CANVAS_W - out.w));
+  out.y = Math.max(0, Math.min(out.y, CANVAS_H - out.h));
   return out;
 }
 
@@ -217,6 +230,7 @@ const SalonFloor = React.memo(function SalonFloor({
   sectors, isEditingSectors, onToggleEditSectors, onSaveSectors,
   highlightTableId, focusRequest,
   ownerByTable, staff, groupOwners, onChooseGroupOwner,
+  onSaveError,
 }) {
   const [dirty, setDirty] = useState(false);
   const [pendingGroupChoice, setPendingGroupChoice] = useState(null);
@@ -234,6 +248,9 @@ const SalonFloor = React.memo(function SalonFloor({
   const pinchRef = useRef(null);
   const panRef = useRef(null);
   const lastTapRef = useRef(0);
+  const suppressClickRef = useRef(false);
+  const sectorsRef = useRef(sectors);
+  sectorsRef.current = sectors;
 
   const effectiveScale = fitScale * zoom;
 
@@ -262,19 +279,20 @@ const SalonFloor = React.memo(function SalonFloor({
   }, [isMobile]);
 
   const zoomAt = useCallback((factor, cx, cy) => {
-    setZoom(prev => {
-      const newZ = Math.min(3, Math.max(1, prev * factor));
-      if (newZ === 1) {
-        setOffset({ x: 0, y: 0 });
-        return 1;
-      }
-      const k = newZ / prev;
-      setOffset(prevOff => clampOffset({
-        x: cx + k * (prevOff.x - cx),
-        y: cy + k * (prevOff.y - cy),
-      }));
-      return newZ;
-    });
+    const prev = zoomRef.current;
+    const newZ = Math.min(3, Math.max(1, prev * factor));
+    if (newZ === 1) {
+      setZoom(1);
+      setOffset({ x: 0, y: 0 });
+      return;
+    }
+    const k = newZ / prev;
+    const off = offsetRef.current;
+    setOffset(clampOffset({
+      x: cx + k * (off.x - cx),
+      y: cy + k * (off.y - cy),
+    }));
+    setZoom(newZ);
   }, [clampOffset]);
 
   const resetView = useCallback(() => {
@@ -298,7 +316,7 @@ const SalonFloor = React.memo(function SalonFloor({
     const el = containerRef.current;
     if (!el) return;
     const onWheel = (e) => {
-      if (isEditing) return;
+      if (isEditing || isEditingSectors) return;
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       const cx = e.clientX - rect.left;
@@ -308,20 +326,28 @@ const SalonFloor = React.memo(function SalonFloor({
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [isEditing, zoomAt]);
+  }, [isEditing, isEditingSectors, zoomAt]);
 
   useEffect(() => {
-    if (tables.length > 0 && Object.keys(positions).length === 0) {
-      setPositions(defaultPositions(tables));
+    if (tables.length === 0) return;
+    // Siembra solo las mesas que no tienen posición guardada: así las mesas
+    // nuevas (agregadas en Configuración) no se apilan en la esquina (0,0).
+    const missing = tables.filter(t => !positions[t.id]);
+    if (missing.length === 0) return;
+    const defaults = defaultPositions(tables);
+    const patch = {};
+    for (const t of missing) {
+      if (defaults[t.id]) patch[t.id] = defaults[t.id];
     }
+    setPositions(prev => ({ ...prev, ...patch }));
   }, [tables, positions, setPositions]);
 
   useEffect(() => {
-    if (isEditing) {
+    if (isEditing || isEditingSectors) {
       setZoom(1);
       setOffset({ x: 0, y: 0 });
     }
-  }, [isEditing]);
+  }, [isEditing, isEditingSectors]);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
@@ -348,7 +374,7 @@ const SalonFloor = React.memo(function SalonFloor({
 
   // Rect de cada mesa del lienzo (dimensiones conocidas)
   const tableRect = useCallback((t, pos) => {
-    const d = TABLE_DIMS[t.shape] || TABLE_DIMS.round;
+    const d = (t && TABLE_DIMS[t.shape]) || TABLE_DIMS.round;
     return { x: pos.x, y: pos.y, w: d.w, h: d.h };
   }, []);
 
@@ -504,7 +530,10 @@ const SalonFloor = React.memo(function SalonFloor({
   }, [isEditing, positions, tables, groups, effectiveScale, isMobile, setPositions, setGroups, tableRect, closestSnap, ownerByTable, tableNums, staff, groupOwners]);
 
   const handleTouchStart = useCallback((e) => {
-    if (isEditing) return;
+    if (isEditing || isEditingSectors) return;
+    // Sobre una mesa o un botón el tap abre la mesa/acción: no registrar
+    // doble-tap ni pan, así el click no se convierte en zoom/arrastre.
+    if (e.target.closest && e.target.closest('[data-table-id], button')) return;
     if (e.touches.length === 2) {
       e.preventDefault();
       return;
@@ -526,21 +555,25 @@ const SalonFloor = React.memo(function SalonFloor({
         }
       }
     }
-  }, [isEditing, zoomAt]);
+  }, [isEditing, isEditingSectors, zoomAt]);
 
   const handleTouchMove = useCallback((e) => {
-    if (isEditing) return;
+    if (isEditing || isEditingSectors) return;
     if (e.touches.length === 2) {
       e.preventDefault();
       return;
     } else if (e.touches.length === 1 && panRef.current) {
       e.preventDefault();
+      const t = e.touches[0];
+      const dx = t.clientX - (panRef.current.x + offsetRef.current.x);
+      const dy = t.clientY - (panRef.current.y + offsetRef.current.y);
+      if (dx * dx + dy * dy > 16) suppressClickRef.current = true;
       setOffset(clampOffset({
-        x: e.touches[0].clientX - panRef.current.x,
-        y: e.touches[0].clientY - panRef.current.y,
+        x: t.clientX - panRef.current.x,
+        y: t.clientY - panRef.current.y,
       }));
     }
-  }, [clampOffset, isEditing]);
+  }, [clampOffset, isEditing, isEditingSectors]);
 
   const handleTouchEnd = useCallback(() => {
     pinchRef.current = null;
@@ -562,16 +595,33 @@ const SalonFloor = React.memo(function SalonFloor({
   // ── Pan con mouse en PC ────────────────────────────────────────────────
   const mousePanRef = useRef(null);
 
+  // Tras un pan/arrastre real, el click generado al soltar NO debe abrir
+  // la mesa. Se captura en el contenedor antes de llegar a las mesas.
+  const handleContainerClickCapture = useCallback((e) => {
+    if (suppressClickRef.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      suppressClickRef.current = false;
+    }
+  }, []);
+
   const handleMouseDown = useCallback((e) => {
     if (isEditing || isEditingSectors || zoom <= 1) return;
     if (e.button !== 0) return;
+    if (e.target.closest && e.target.closest('button')) return;
     e.preventDefault();
-    mousePanRef.current = { x: e.clientX - offset.x, y: e.clientY - offset.y };
-  }, [isEditing, isEditingSectors, zoom, offset]);
+    suppressClickRef.current = false;
+    const off = offsetRef.current;
+    mousePanRef.current = { x: e.clientX - off.x, y: e.clientY - off.y };
+  }, [isEditing, isEditingSectors, zoom]);
 
   const handleMouseMove = useCallback((e) => {
     if (!mousePanRef.current) return;
     e.preventDefault();
+    const off = offsetRef.current;
+    const dx = e.clientX - (mousePanRef.current.x + off.x);
+    const dy = e.clientY - (mousePanRef.current.y + off.y);
+    if (dx * dx + dy * dy > 16) suppressClickRef.current = true;
     setOffset(clampOffset({
       x: e.clientX - mousePanRef.current.x,
       y: e.clientY - mousePanRef.current.y,
@@ -632,8 +682,9 @@ const SalonFloor = React.memo(function SalonFloor({
       setDirty(false);
     } catch (err) {
       console.error('[SalonFloor] Error guardando layout:', err);
+      if (onSaveError) onSaveError('No se pudo guardar el plano. Revisá la conexión e intentá de nuevo.');
     }
-  }, [positions, tables, saveLayout, setGroups, closestSnap]);
+  }, [positions, tables, saveLayout, setGroups, closestSnap, onSaveError]);
 
   // ── Separar un grupo unido: se quita del layout y se separan visualmente ──
   const unjoinGroup = useCallback((group) => {
@@ -659,7 +710,7 @@ const SalonFloor = React.memo(function SalonFloor({
     if (!isEditingSectors) return;
     if (e.cancelable) e.preventDefault();
     e.stopPropagation();
-    const sector = (sectors || []).find(s => s.id === sectorId);
+    const sector = (sectorsRef.current || []).find(s => s.id === sectorId);
     if (!sector) return;
     const startX = e.clientX ?? 0;
     const startY = e.clientY ?? 0;
@@ -674,7 +725,7 @@ const SalonFloor = React.memo(function SalonFloor({
       const rawDy = (cy - startY) / effectiveScale;
       const dx = isMobile ? rawDy : rawDx;
       const dy = isMobile ? -rawDx : rawDy;
-      const others = sectors.filter(s => s.id !== sectorId);
+      const others = sectorsRef.current.filter(s => s.id !== sectorId);
       const resolved = resolveSectorDrag(orig.x + dx, orig.y + dy, orig.w, orig.h, others);
       if (rafId) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
@@ -694,7 +745,7 @@ const SalonFloor = React.memo(function SalonFloor({
       window.removeEventListener('pointercancel', onUp);
       if (sectorDragRef.current && sectorDragRef.current.sectorId === sectorId && onSaveSectors) {
         const d = sectorDragRef.current;
-        const updated = sectors.map(s => s.id === sectorId ? { ...s, x: orig.x + d.dx, y: orig.y + d.dy } : s);
+        const updated = sectorsRef.current.map(s => s.id === sectorId ? { ...s, x: orig.x + d.dx, y: orig.y + d.dy } : s);
         onSaveSectors(updated);
       }
       sectorDragRef.current = null;
@@ -703,13 +754,13 @@ const SalonFloor = React.memo(function SalonFloor({
     window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
-  }, [isEditingSectors, sectors, effectiveScale, onSaveSectors, isMobile]);
+  }, [isEditingSectors, effectiveScale, onSaveSectors, isMobile]);
 
   const handleSectorResize = useCallback((sectorId, handle, e) => {
     if (!isEditingSectors) return;
     if (e.cancelable) e.preventDefault();
     e.stopPropagation();
-    const sector = (sectors || []).find(s => s.id === sectorId);
+    const sector = (sectorsRef.current || []).find(s => s.id === sectorId);
     if (!sector) return;
     const startX = e.clientX ?? 0;
     const startY = e.clientY ?? 0;
@@ -731,7 +782,7 @@ const SalonFloor = React.memo(function SalonFloor({
       if (handle.includes('s')) h = Math.max(60, orig.h + dy);
       if (handle.includes('n')) { h = Math.max(60, orig.h - dy); y = orig.y + (orig.h - h); }
 
-      const others = sectors.filter(s => s.id !== sectorId);
+      const others = sectorsRef.current.filter(s => s.id !== sectorId);
       const resolved = resolveSectorResize(x, y, w, h, handle, others);
       x = resolved.x; y = resolved.y; w = resolved.w; h = resolved.h;
 
@@ -755,7 +806,7 @@ const SalonFloor = React.memo(function SalonFloor({
       window.removeEventListener('pointercancel', onUp);
       if (sectorDragRef.current && sectorDragRef.current.id === sectorId && onSaveSectors) {
         const d = sectorDragRef.current;
-        const updated = sectors.map(s => s.id === sectorId ? { ...s, x: d.x, y: d.y, w: d.w, h: d.h } : s);
+        const updated = sectorsRef.current.map(s => s.id === sectorId ? { ...s, x: d.x, y: d.y, w: d.w, h: d.h } : s);
         onSaveSectors(updated);
       }
       sectorDragRef.current = null;
@@ -764,7 +815,7 @@ const SalonFloor = React.memo(function SalonFloor({
     window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
-  }, [isEditingSectors, sectors, effectiveScale, onSaveSectors, isMobile]);
+  }, [isEditingSectors, effectiveScale, onSaveSectors, isMobile]);
 
   // "Listo" sale del modo edición guardando los cambios pendientes,
   // así un snapshot posterior no revierte las uniones hechas.
@@ -939,6 +990,7 @@ const SalonFloor = React.memo(function SalonFloor({
 
       <div
         ref={containerRef}
+        onClickCapture={handleContainerClickCapture}
         onTouchEnd={handleTouchEnd}
         style={{
           width: '100%',

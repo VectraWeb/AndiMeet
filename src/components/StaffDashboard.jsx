@@ -162,10 +162,12 @@ export default function StaffDashboard({ onLogout }) {
   // ── Persistir configuración ────────────────────────────────────────────────────────
   const saveConfig = useCallback(async (c) => {
     try {
-      await setDoc(cfgRef(), { mesaTipos: c, sectors }, { merge: true });
+      // merge: true preserva los campos que no se tocan (p. ej. sectors):
+      // NO se incluye `sectors` acá para no pisarlo con un valor desactualizado.
+      await setDoc(cfgRef(), { mesaTipos: c }, { merge: true });
       await syncMesasWithConfig(c);
     } catch (e) { console.error(e); }
-  }, [sectors]);
+  }, []);
 
   const saveSectorsFromPlano = useCallback(async (updatedSectors) => {
     setSectors(updatedSectors);
@@ -511,7 +513,7 @@ export default function StaffDashboard({ onLogout }) {
   // El highlight + banner expiran a los 5s; el foco se re-arma con cada click
   // (key nueva) para que se pueda repetir las veces que se quiera.
   const handleGoToTable = useCallback((r) => {
-    const tableId = r?.tableId || r?.mesa;
+    const tableId = r?.tableId || r?.mesa_id || r?.mesa;
     if (!tableId) {
       showToast('Esta reserva no tiene mesa asignada.');
       return;
@@ -913,6 +915,7 @@ export default function StaffDashboard({ onLogout }) {
           staff={staff}
           groupOwners={groupOwners}
           onChooseGroupOwner={saveGroupOwner}
+          onSaveError={showToast}
         />
       )}
 

@@ -87,9 +87,10 @@ service cloud.firestore {
       allow read: if true;
 
       // Solo los campos que escribe la app (settings, sectores y layout).
+      // groupOwners: mozo elegido cuando un grupo de mesas cruza sectores.
       allow create, update: if isAuthenticated()
         && request.resource.data.keys().hasOnly([
-          'mesaTipos', 'sectors', 'positions', 'groups', 'updatedAt'
+          'mesaTipos', 'sectors', 'positions', 'groups', 'groupOwners', 'updatedAt'
         ]);
 
       allow delete: if isAuthenticated();

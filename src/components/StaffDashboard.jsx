@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Plus, X } from 'lucide-react';
 import {
-  doc, setDoc, updateDoc,
+  doc, setDoc, updateDoc, deleteDoc,
   serverTimestamp, runTransaction, arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -25,7 +25,7 @@ import StaffModal from './StaffModal';
 import SectoresModal from './SectoresModal';
 import PedidosPanel from './PedidosPanel';
 import {
-  C, LIVE_STATES, SERVICES, DEFAULT_CONFIG,
+  C, LIVE_STATES, SERVICES,
   t2m, genSlots, buildTables, todayISO,
   detectService, computeStateDurations,
   getAssignedTables, notificarN8N,
@@ -131,7 +131,9 @@ export default function StaffDashboard({ onLogout }) {
 
   // ── Loading state ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!configLoaded.current && config !== DEFAULT_CONFIG) {
+    // config arranca en null: sin la guarda `config`, el null !== DEFAULT_CONFIG
+    // cortaba el loading en el primer render (antes de que llegara la config).
+    if (!configLoaded.current && config) {
       configLoaded.current = true;
       setLoading(false);
     }
@@ -189,6 +191,11 @@ export default function StaffDashboard({ onLogout }) {
     const mesaNum = cleanData.tableId ? (groupNumByTable[cleanData.tableId] || tableNumByTable[cleanData.tableId]) : null;
 
     if (!cleanData.tableId) {
+      // Si se está QUITANDO la mesa de una reserva existente, hay que
+      // liberar el doc de mesasReservadas viejo: si queda, bloquea la mesa
+      // para cualquier reserva futura ("acaba de ser reservada").
+      if (_oldMesaRef) await deleteDoc(_oldMesaRef).catch(() => {});
+      if (_prevMesaRef) await deleteDoc(_prevMesaRef).catch(() => {});
       await setDoc(resDocRef(id), {
         ...cleanData, id, date,
         mesa_id: null,
@@ -554,8 +561,16 @@ export default function StaffDashboard({ onLogout }) {
   }, [service, date, setShowModal, setEditing, setPreTable, showToast]);
 
   // ── Callbacks estables para el plano (mantienen efectivo el React.memo) ────
-  const toggleEditingLayout = useCallback(() => setEditingLayout(v => !v), []);
-  const toggleEditingSectors = useCallback(() => setEditingSectors(v => !v), []);
+  // Modos de edición mutuamente excluyentes: editar mesas y sectores a la vez
+  // dejaba las mesas sin pointerEvents y los gestos en un estado raro.
+  const toggleEditingLayout = useCallback(() => {
+    setEditingLayout(v => !v);
+    setEditingSectors(false);
+  }, []);
+  const toggleEditingSectors = useCallback(() => {
+    setEditingSectors(v => !v);
+    setEditingLayout(false);
+  }, []);
   const handleTableClick = useCallback((t, s) => {
     if (editingSectors) return;
     if (s.status === 'free') {

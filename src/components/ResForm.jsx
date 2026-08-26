@@ -1,17 +1,16 @@
 // ResForm.jsx — Formulario de reserva independiente para clientes
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Check, AlertCircle, Calendar, Clock, ArrowLeft } from 'lucide-react';
 import {
-  doc, onSnapshot, setDoc, serverTimestamp,
+  doc, setDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { C, SERVICES, DEFAULT_CONFIG, configToArray, serviceFromTime, defaultServiceTime, todayISO } from '../utils';
+import { C, SERVICES, serviceFromTime, defaultServiceTime, todayISO } from '../utils';
 import { Field } from './ui';
 import PhoneField from './PhoneField';
 
 // ─── Firestore helpers ───────────────────────────────────────────────────────
 const resDocRef = (id) => doc(db, 'reservations', id);
-const cfgRef = () => doc(db, 'config', 'restaurant');
 
 // ─── Estilos ─────────────────────────────────────────────────────────────────
 const inp = {
@@ -26,7 +25,6 @@ const inp = {
 // ResForm — Formulario de reserva para clientes
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function ResForm({ onStaffAccess, onBack }) {
-  const [, setConfig] = useState(DEFAULT_CONFIG);
   const [date, setDate] = useState(todayISO());
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -56,14 +54,6 @@ export default function ResForm({ onStaffAccess, onBack }) {
   });
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  // ── Suscripción a config ─────────────────────────────────────────────────
-  useEffect(() => {
-    const unsub = onSnapshot(cfgRef(), (snap) => {
-      if (snap.exists()) setConfig(configToArray(snap.data()));
-    });
-    return unsub;
-  }, []);
 
   // Servicio (Mediodía/Cena) derivado de la hora elegida
   const service = serviceFromTime(form.time);

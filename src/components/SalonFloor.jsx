@@ -266,8 +266,17 @@ const SalonFloor = React.memo(function SalonFloor({
   const panRef = useRef(null);
   const lastTapRef = useRef(0);
   const suppressClickRef = useRef(false);
-  const sectorsRef = useRef(sectors);
-  sectorsRef.current = sectors;
+
+  const [dirtySectors, setDirtySectors] = useState(false);
+  const [localSectors, setLocalSectors] = useState(sectors);
+  const sectorsRef = useRef(localSectors);
+
+  useEffect(() => {
+    if (!isEditingSectors) {
+      setLocalSectors(sectors);
+      sectorsRef.current = sectors;
+    }
+  }, [sectors, isEditingSectors]);
 
   const effectiveScale = fitScale * zoom;
 
@@ -760,10 +769,12 @@ const SalonFloor = React.memo(function SalonFloor({
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
-      if (sectorDragRef.current && sectorDragRef.current.sectorId === sectorId && onSaveSectors) {
+      if (sectorDragRef.current && sectorDragRef.current.sectorId === sectorId) {
         const d = sectorDragRef.current;
         const updated = sectorsRef.current.map(s => s.id === sectorId ? { ...s, x: orig.x + d.dx, y: orig.y + d.dy } : s);
-        onSaveSectors(updated);
+        sectorsRef.current = updated;
+        setLocalSectors(updated);
+        setDirtySectors(true);
       }
       sectorDragRef.current = null;
     };
@@ -821,10 +832,12 @@ const SalonFloor = React.memo(function SalonFloor({
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
-      if (sectorDragRef.current && sectorDragRef.current.id === sectorId && onSaveSectors) {
+      if (sectorDragRef.current && sectorDragRef.current.id === sectorId) {
         const d = sectorDragRef.current;
         const updated = sectorsRef.current.map(s => s.id === sectorId ? { ...s, x: d.x, y: d.y, w: d.w, h: d.h } : s);
-        onSaveSectors(updated);
+        sectorsRef.current = updated;
+        setLocalSectors(updated);
+        setDirtySectors(true);
       }
       sectorDragRef.current = null;
     };
@@ -843,6 +856,23 @@ const SalonFloor = React.memo(function SalonFloor({
         .finally(() => onToggleEdit());
     } else {
       onToggleEdit();
+    }
+  };
+
+  const handleFinishEditSectors = () => {
+    if (dirtySectors) {
+      if (onSaveSectors) {
+        onSaveSectors(localSectors)
+          .catch(() => {})
+          .finally(() => {
+            setDirtySectors(false);
+            onToggleEditSectors();
+          });
+      } else {
+        onToggleEditSectors();
+      }
+    } else {
+      onToggleEditSectors();
     }
   };
 
@@ -967,7 +997,7 @@ const SalonFloor = React.memo(function SalonFloor({
           </span>
         </div>
         <div style={{ display: 'flex', gap: '4px' }}>
-          <button onClick={onToggleEditSectors} style={{
+          <button onClick={isEditingSectors ? handleFinishEditSectors : onToggleEditSectors} style={{
             background: isEditingSectors ? PALETTE.forest : PALETTE.creamDeep,
             color: isEditingSectors ? '#fff' : PALETTE.muted,
             border: 'none', borderRadius: '8px', padding: '5px 10px',
@@ -1122,7 +1152,8 @@ const SalonFloor = React.memo(function SalonFloor({
             ))}
           </svg>
 
-          {(sectors || []).map(sec => {
+          {/* ── SECTORES ── */}
+          {(localSectors || []).map(sec => {
             const HANDLE_SIZE = 10;
             const hs = HANDLE_SIZE / 2;
             const handles = [
@@ -1275,7 +1306,8 @@ const SalonFloor = React.memo(function SalonFloor({
             }
             const timer = cleaningTimers?.[t.id] || null;
             const dim = TABLE_DIMS[t.shape] || TABLE_DIMS.round;
-            const secFor = (sectors || []).find(sec => {
+            // Color según sector
+            const secFor = (localSectors || []).find(sec => {
               const p = positions[t.id];
               return p && rectsOverlap(sec, { x: p.x, y: p.y, w: dim.w, h: dim.h });
             }) || null;

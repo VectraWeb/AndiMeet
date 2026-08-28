@@ -9,6 +9,7 @@ import {
   persistentMultipleTabManager
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously, connectAuthEmulator } from 'firebase/auth';
+import { getAnalytics } from 'firebase/analytics';
 
 // ─── Configuración de credenciales (Usa import.meta.env para Vite) ───────
 const firebaseConfig = {
@@ -18,10 +19,12 @@ const firebaseConfig = {
   storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "localhost",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456",
   appId:             import.meta.env.VITE_FIREBASE_APP_ID || "1:123:web:abc12345",
+  measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Inicializar Firebase App
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
 // Autenticación (sesión anónima — ver abajo)
 const auth = getAuth(app);
@@ -52,3 +55,4 @@ if (!auth.currentUser) {
 }
 
 export default app;
+export { analytics };

@@ -28,7 +28,7 @@ service cloud.firestore {
       // La lista es la unión de todos los campos que el código escribe hoy
       // (updateLiveState, finalizar, editar reserva completa, timers de limpieza).
       allow update: if isAuthenticated()
-        && request.resource.data.keys().hasOnly([
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'id', 'customerName', 'phone', 'customerPhone',
           'partySize', 'tableId', 'mesa_id', 'mesa',
           'time', 'duration', 'service', 'notes',
@@ -54,7 +54,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
 
       allow update: if isAuthenticated()
-        && request.resource.data.keys().hasOnly([
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'pedidoEstado', 'pedidoRechazoMotivo',
           'tiempoPreparacionMin', 'tiempoEnvioMin', 'tiempoTotalMin', 'confirmadoAt'
         ]);
@@ -88,8 +88,13 @@ service cloud.firestore {
 
       // Solo los campos que escribe la app (settings, sectores y layout).
       // groupOwners: mozo elegido cuando un grupo de mesas cruza sectores.
-      allow create, update: if isAuthenticated()
+      allow create: if isAuthenticated()
         && request.resource.data.keys().hasOnly([
+          'mesaTipos', 'sectors', 'positions', 'groups', 'groupOwners', 'updatedAt'
+        ]);
+
+      allow update: if isAuthenticated()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'mesaTipos', 'sectors', 'positions', 'groups', 'groupOwners', 'updatedAt'
         ]);
 
@@ -102,8 +107,13 @@ service cloud.firestore {
     match /mesasReservadas/{docId} {
       allow read: if isAuthenticated();
 
-      allow create, update: if isAuthenticated()
+      allow create: if isAuthenticated()
         && request.resource.data.keys().hasOnly([
+          'occupied', 'reservationId', 'time', 'partySize'
+        ]);
+
+      allow update: if isAuthenticated()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'occupied', 'reservationId', 'time', 'partySize'
         ]);
 
@@ -117,8 +127,13 @@ service cloud.firestore {
       // Nombres del staff: solo con sesión.
       allow read: if isAuthenticated();
 
-      allow create, update: if isAuthenticated()
+      allow create: if isAuthenticated()
         && request.resource.data.keys().hasOnly([
+          'name', 'active', 'assignedTables', 'createdAt'
+        ]);
+
+      allow update: if isAuthenticated()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'active', 'assignedTables', 'createdAt'
         ]);
 
@@ -133,8 +148,13 @@ service cloud.firestore {
       allow read: if true;
 
       // Solo los campos que escribe el seed/sync desde config.
-      allow create, update: if isAuthenticated()
+      allow create: if isAuthenticated()
         && request.resource.data.keys().hasOnly([
+          'capacity', 'name', 'number', 'shape'
+        ]);
+
+      allow update: if isAuthenticated()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'capacity', 'name', 'number', 'shape'
         ]);
 

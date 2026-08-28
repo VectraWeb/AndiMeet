@@ -59,9 +59,9 @@ export const getAssignedTables = (s) => {
 };
 
 // ─── Geometría de sectores ───────────────────────────────────────────────────
-// Dos rectángulos se consideran superpuestos si se tocan o cruzan
+// Dos rectángulos se consideran superpuestos si se cruzan (tocar los bordes no cuenta)
 export const rectsOverlap = (a, b) =>
-  a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
+  a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
 export const configToArray = (cfg) => {
   if (Array.isArray(cfg)) return cfg;

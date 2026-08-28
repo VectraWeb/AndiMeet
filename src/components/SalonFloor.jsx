@@ -53,16 +53,29 @@ function resolveSectorDrag(x, y, w, h, others) {
 // justo hasta el borde del otro sector (permite que se toquen)
 function resolveSectorResize(x, y, w, h, handle, others) {
   let out = { x, y, w, h };
+  const fixedRight = x + w;
+  const fixedBottom = y + h;
+
   for (let iter = 0; iter < 3; iter++) {
     let clamped = false;
     for (const o of others) {
       if (!rectsOverlap(out, o)) continue;
       const next = { ...out };
-      if (handle.includes('e')) next.w = Math.max(80, Math.min(next.w, o.x - x));
-      if (handle.includes('s')) next.h = Math.max(60, Math.min(next.h, o.y - y));
-      if (handle.includes('w')) next.w = Math.max(80, Math.min(next.w, (x + w) - (o.x + o.w)));
-      if (handle.includes('n')) next.h = Math.max(60, Math.min(next.h, (y + h) - (o.y + o.h)));
-      if (next.w !== out.w || next.h !== out.h) {
+      if (handle.includes('e')) {
+        next.w = Math.max(80, Math.min(next.w, o.x - out.x));
+      }
+      if (handle.includes('s')) {
+        next.h = Math.max(60, Math.min(next.h, o.y - out.y));
+      }
+      if (handle.includes('w')) {
+        next.w = Math.max(80, Math.min(next.w, fixedRight - (o.x + o.w)));
+        next.x = fixedRight - next.w;
+      }
+      if (handle.includes('n')) {
+        next.h = Math.max(60, Math.min(next.h, fixedBottom - (o.y + o.h)));
+        next.y = fixedBottom - next.h;
+      }
+      if (next.w !== out.w || next.h !== out.h || next.x !== out.x || next.y !== out.y) {
         out = next;
         clamped = true;
         break;
@@ -70,11 +83,15 @@ function resolveSectorResize(x, y, w, h, handle, others) {
     }
     if (!clamped) break;
   }
-  // Siempre dentro del lienzo, aunque el otro sector esté pegado al borde
-  out.w = Math.max(80, Math.min(out.w, CANVAS_W));
-  out.h = Math.max(60, Math.min(out.h, CANVAS_H));
-  out.x = Math.max(0, Math.min(out.x, CANVAS_W - out.w));
-  out.y = Math.max(0, Math.min(out.y, CANVAS_H - out.h));
+  
+  if (handle.includes('e')) out.w = Math.max(80, Math.min(out.w, CANVAS_W - out.x));
+  if (handle.includes('s')) out.h = Math.max(60, Math.min(out.h, CANVAS_H - out.y));
+  if (handle.includes('w')) {
+    if (out.x < 0) { out.w = fixedRight; out.x = 0; }
+  }
+  if (handle.includes('n')) {
+    if (out.y < 0) { out.h = fixedBottom; out.y = 0; }
+  }
   return out;
 }
 

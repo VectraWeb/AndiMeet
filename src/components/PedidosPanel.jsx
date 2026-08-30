@@ -312,6 +312,7 @@ export default function PedidosPanel({ date, service }) {
       setRejectReason('');
     } catch (err) {
       console.error('[Pedidos] Error rechazando:', err);
+      alert('Error al rechazar: ' + (err.message || 'Verificá la conexión'));
     }
   };
 

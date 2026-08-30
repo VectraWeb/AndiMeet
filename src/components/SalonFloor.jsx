@@ -871,7 +871,10 @@ const SalonFloor = React.memo(function SalonFloor({
     if (dirtySectors) {
       if (onSaveSectors) {
         onSaveSectors(localSectors)
-          .catch(() => {})
+          .catch((err) => {
+            console.error('[SalonFloor] Error al guardar sectores:', err);
+            if (onSaveError) onSaveError('Error al guardar: ' + (err.message || 'Permiso denegado o problema de red'));
+          })
           .finally(() => {
             setDirtySectors(false);
             onToggleEditSectors();

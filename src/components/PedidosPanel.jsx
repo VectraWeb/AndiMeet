@@ -253,12 +253,15 @@ export default function PedidosPanel({ date, service }) {
       where('date', '==', date),
       where('source', 'in', ['whatsapp_bot', 'cliente_web', 'staff']),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (!service) { setPedidos(data); return; }
-      setPedidos(data.filter(p => !p.service || p.service === service));
-    }, (err) => console.error('[Pedidos] Firestore error:', err));
-    return unsub;
+    let unsub;
+    authReady.then(() => {
+      unsub = onSnapshot(q, (snap) => {
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (!service) { setPedidos(data); return; }
+        setPedidos(data.filter(p => !p.service || p.service === service));
+      }, (err) => console.error('[Pedidos] Firestore error:', err));
+    });
+    return () => { if (unsub) unsub(); };
   }, [date, service]);
 
   const allPedidos = pedidos;

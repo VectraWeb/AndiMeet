@@ -10,18 +10,21 @@ export function useConfig() {
   const [sectors, setSectors] = useState([]);
 
   useEffect(() => {
-    const unsub = onSnapshot(cfgRef(), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.mesaTipos) {
-          setConfig(data.mesaTipos);
-        } else {
-          setConfig(configToArray(data));
+    let unsub;
+    authReady.then(() => {
+      unsub = onSnapshot(cfgRef(), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.mesaTipos) {
+            setConfig(data.mesaTipos);
+          } else {
+            setConfig(configToArray(data));
+          }
+          if (data.sectors) setSectors(data.sectors);
         }
-        if (data.sectors) setSectors(data.sectors);
-      }
+      });
     });
-    return unsub;
+    return () => { if (unsub) unsub(); };
   }, []);
 
   const saveSectors = async (updatedSectors) => {

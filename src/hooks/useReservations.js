@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, authReady } from '../firebase';
 import { toLocalISO } from '../utils';
 
 const resCol = () => collection(db, 'reservations');
@@ -20,18 +20,21 @@ export function useReservations(date) {
 
   useEffect(() => {
     const q = query(resCol(), where('date', '==', date));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const data = snap.docs
-          .map(d => ({ ...d.data(), id: d.id, service: normService(d.data().service) }))
-          .filter(r => r.source !== 'whatsapp_bot')
-          .filter(r => !['cancelado', 'no_show', 'ausente'].includes(r.estado));
-        setReservations(data);
-      },
-      (err) => { console.error('[Andi] Firestore error:', err); }
-    );
-    return unsub;
+    let unsub;
+    authReady.then(() => {
+      unsub = onSnapshot(
+        q,
+        (snap) => {
+          const data = snap.docs
+            .map(d => ({ ...d.data(), id: d.id, service: normService(d.data().service) }))
+            .filter(r => r.source !== 'whatsapp_bot')
+            .filter(r => !['cancelado', 'no_show', 'ausente'].includes(r.estado));
+          setReservations(data);
+        },
+        (err) => { console.error('[Andi] Firestore error:', err); }
+      );
+    });
+    return () => { if (unsub) unsub(); };
   }, [date]);
 
   return reservations;
@@ -79,6 +82,7 @@ export function useAnalyticsReservations(date, showAnalytics, analyticsPeriod, a
 
     (async () => {
       try {
+        await authReady;
         const chunks = [];
         for (let i = 0; i < dates.length; i += MAX_IN_VALUES) {
           chunks.push(dates.slice(i, i + MAX_IN_VALUES));

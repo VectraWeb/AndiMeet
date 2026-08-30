@@ -25,17 +25,20 @@ export function useSalonLayout() {
   useEffect(() => { groupsRef.current = groups; }, [groups]);
 
   useEffect(() => {
-    const unsub = onSnapshot(layoutRef(), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.positions) setPositions(data.positions);
-        if (Array.isArray(data.groups)) setGroups(data.groups);
-        const go = data.groupOwners && typeof data.groupOwners === 'object' ? data.groupOwners : {};
-        groupOwnersRef.current = go;
-        setGroupOwners(go);
-      }
+    let unsub;
+    authReady.then(() => {
+      unsub = onSnapshot(layoutRef(), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.positions) setPositions(data.positions);
+          if (Array.isArray(data.groups)) setGroups(data.groups);
+          const go = data.groupOwners && typeof data.groupOwners === 'object' ? data.groupOwners : {};
+          groupOwnersRef.current = go;
+          setGroupOwners(go);
+        }
+      });
     });
-    return unsub;
+    return () => { if (unsub) unsub(); };
   }, []);
 
   const saveLayout = useCallback(async (pos, grp) => {

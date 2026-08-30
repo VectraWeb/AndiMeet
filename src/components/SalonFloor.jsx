@@ -296,11 +296,19 @@ const SalonFloor = React.memo(function SalonFloor({
     const s = effectiveScaleRef.current;
     const visualW = (isMobile ? CANVAS_H : CANVAS_W) * s;
     const visualH = (isMobile ? CANVAS_W : CANVAS_H) * s;
-    const maxX = Math.max(0, (visualW - w) / 2);
-    const maxY = Math.max(0, (visualH - h) / 2);
+    if (isMobile) {
+      const maxX = Math.max(0, (visualW - w) / 2);
+      const maxY = Math.max(0, (visualH - h) / 2);
+      return {
+        x: Math.max(-maxX, Math.min(maxX, o.x)),
+        y: Math.max(-maxY, Math.min(maxY, o.y)),
+      };
+    }
+    const maxX = Math.max(0, visualW - w);
+    const maxY = Math.max(0, visualH - h);
     return {
-      x: Math.max(-maxX, Math.min(maxX, o.x)),
-      y: Math.max(-maxY, Math.min(maxY, o.y)),
+      x: Math.max(-maxX, Math.min(0, o.x)),
+      y: Math.max(-maxY, Math.min(0, o.y)),
     };
   }, [isMobile]);
 

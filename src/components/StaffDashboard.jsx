@@ -320,21 +320,16 @@ export default function StaffDashboard({ onLogout }) {
     setShowLiveMenu(null);
     setOptimisticStates(prev => ({ ...prev, [res.id]: null }));
     try {
-      await updateDoc(resDocRef(res.id), {
-        liveState: null,
-        startedAt: null,
-        leftAt: null,
-        updatedAt: serverTimestamp(),
-      });
-      updateDoc(resDocRef(res.id), {
-        stateLog: arrayUnion({ state: 'liberada', at: new Date().toISOString() }),
-      }).catch(err => console.warn('[Andi] Fallo al registrar stateLog:', err));
+      if (res.tableId && res.service) {
+        await deleteDoc(mesaReservadaRef(res.tableId, date, res.service)).catch(() => {});
+      }
+      await deleteDoc(resDocRef(res.id));
       setOptimisticStates(prev => { const n = { ...prev }; delete n[res.id]; return n; });
     } catch (e) {
       console.warn('[Andi] Fallo al limpiar mesa, revirtiendo...', e);
       setOptimisticStates(prev => { const n = { ...prev }; delete n[res.id]; return n; });
     }
-  }, []);
+  }, [date]);
 
   // ── Cálculos ───────────────────────────────────────────────────────────────
   const svcRes = useMemo(() =>

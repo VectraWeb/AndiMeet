@@ -4,7 +4,7 @@ import {
   doc, setDoc, updateDoc, deleteDoc,
   serverTimestamp, runTransaction, arrayUnion,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, authReady } from '../firebase';
 import { syncMesasWithConfig } from '../services/mesasHelpers';
 import { useCleaningTimers } from '../hooks/useCleaningTimers';
 import { useReservations, useAnalyticsReservations } from '../hooks/useReservations';
@@ -164,6 +164,7 @@ export default function StaffDashboard({ onLogout }) {
   // ── Persistir configuración ────────────────────────────────────────────────────────
   const saveConfig = useCallback(async (c) => {
     try {
+      await authReady;
       // merge: true preserva los campos que no se tocan (p. ej. sectors):
       // NO se incluye `sectors` acá para no pisarlo con un valor desactualizado.
       await setDoc(cfgRef(), { mesaTipos: c }, { merge: true });
@@ -173,11 +174,13 @@ export default function StaffDashboard({ onLogout }) {
 
   const saveSectorsFromPlano = useCallback(async (updatedSectors) => {
     setSectors(updatedSectors);
+    await authReady;
     await setDoc(cfgRef(), { sectors: updatedSectors }, { merge: true });
   }, [setSectors]);
 
   const saveSectorsFromModal = useCallback(async (updatedSectors) => {
     setSectors(updatedSectors);
+    await authReady;
     await setDoc(cfgRef(), { sectors: updatedSectors }, { merge: true });
   }, [setSectors]);
 
@@ -189,6 +192,8 @@ export default function StaffDashboard({ onLogout }) {
     // al mozo, y la reserva queda vinculada a ese número, no al físico.
     // Si la mesa está unida a otras, usa el número único del grupo.
     const mesaNum = cleanData.tableId ? (groupNumByTable[cleanData.tableId] || tableNumByTable[cleanData.tableId]) : null;
+
+    await authReady;
 
     if (!cleanData.tableId) {
       // Si se está QUITANDO la mesa de una reserva existente, hay que
@@ -247,6 +252,7 @@ export default function StaffDashboard({ onLogout }) {
 
   const deleteRes = useCallback(async (resData) => {
     try {
+      await authReady;
       await runTransaction(db, async (transaction) => {
         // Solo liberamos la mesa si sigue perteneciendo a ESTA reserva:
         // si otro dispositivo la reasignó, el mesaRef ahora apunta a la nueva
@@ -265,6 +271,7 @@ export default function StaffDashboard({ onLogout }) {
 
   const rejectRes = useCallback(async (resData, motivo) => {
     try {
+      await authReady;
       await runTransaction(db, async (transaction) => {
         // Si la reserva ya tenía mesa asignada, liberarla (rechazo tardío).
         if (resData.tableId && resData.service) {
@@ -307,6 +314,7 @@ export default function StaffDashboard({ onLogout }) {
       patch.cleaningStartedAt = new Date().toISOString();
     }
     try {
+      await authReady;
       await updateDoc(resDocRef(res.id), patch);
     } catch (e) {
       console.warn('[Andi] Fallo en la actualización optimista, revirtiendo estado...', e);
@@ -320,6 +328,7 @@ export default function StaffDashboard({ onLogout }) {
     setShowLiveMenu(null);
     setOptimisticStates(prev => ({ ...prev, [res.id]: null }));
     try {
+      await authReady;
       if (res.tableId && res.service) {
         await deleteDoc(mesaReservadaRef(res.tableId, date, res.service)).catch(() => {});
       }
@@ -532,6 +541,7 @@ export default function StaffDashboard({ onLogout }) {
   const savePedido = useCallback(async (data) => {
     const id = `p${Date.now()}`;
     try {
+      await authReady;
       await setDoc(doc(db, 'pedidos', id), {
         id,
         customerName: data.customerName.trim(),

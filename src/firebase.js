@@ -1,17 +1,14 @@
 // firebase.js — Andi MVP
-// Inicialización del cliente Firebase adaptado a Vite con soporte para Emulador Local y persistencia offline
 
 import { initializeApp } from 'firebase/app';
 import {
-  connectFirestoreEmulator, // ◄ Agregamos la conexión para pruebas locales
+  connectFirestoreEmulator,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager
 } from 'firebase/firestore';
-import { getAuth, signInAnonymously, connectAuthEmulator } from 'firebase/auth';
-import { getAnalytics } from 'firebase/analytics';
+import { getAuth, signInAnonymously, onAuthStateChanged, connectAuthEmulator } from 'firebase/auth';
 
-// ─── Configuración de credenciales (Usa import.meta.env para Vite) ───────
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY || "local-dummy-key",
   authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "localhost",
@@ -22,37 +19,45 @@ const firebaseConfig = {
   measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// Inicializar Firebase App
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-
-// Autenticación (sesión anónima — ver abajo)
 const auth = getAuth(app);
 
-// Inicializar Firestore usando la sintaxis moderna de Vite para PWA (Soporta múltiples pestañas offline)
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()
   })
 });
 
-// 🚀 CONECTAR AL EMULADOR SOLO SI SE ACTIVA EN EL ARCHIVO .env (VITE_USE_EMULATOR=true)
 if (window.location.hostname === "localhost" && import.meta.env.VITE_USE_EMULATOR === "true") {
   connectFirestoreEmulator(db, 'localhost', 8080);
   connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-  console.info('[Andi] Conectado con éxito al emulador local de Firestore (Puerto 8080) ✓');
-  console.info('[Andi] Conectado al emulador local de Auth (Puerto 9099) ✓');
+  console.info('[Andi] Conectado al emulador local ✓');
 }
 
-// 🔐 Sesión anónima: las reglas de Firestore exigen request.auth != null para
-// escribir. Se firma una sesión anónima al arrancar: sin login visible para el
-// usuario, pero bloquear requests externos sin sesión (scrapers, scripts).
-// Requisito: habilitar "Anónimo" en Firebase Console → Authentication → Sign-in method.
-if (!auth.currentUser) {
-  signInAnonymously(auth).catch(err => {
-    console.warn('[Andi] No se pudo iniciar sesión anónima:', err.code);
+let _authResolve;
+export const authReady = new Promise(resolve => { _authResolve = resolve; });
+
+function trySignIn() {
+  signInAnonymously(auth).then(() => {
+    console.info('[Andi] Sesión anónima OK ✓');
+  }).catch(err => {
+    console.error('[Andi] Auth FALLÓ, reintentando en 3s:', err.code);
+    setTimeout(trySignIn, 3000);
   });
 }
 
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    console.info('[Andi] Auth listo, uid:', user.uid.slice(0, 8));
+    _authResolve(user);
+  }
+});
+
+if (!auth.currentUser) {
+  trySignIn();
+} else {
+  _authResolve(auth.currentUser);
+}
+
+export const analytics = null;
 export default app;
-export { analytics };

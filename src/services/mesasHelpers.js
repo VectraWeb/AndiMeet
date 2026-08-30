@@ -1,5 +1,5 @@
 import { collection, doc, getDocs, onSnapshot, writeBatch } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, authReady } from '../firebase';
 import { buildTables } from '../utils';
 
 export const mesasCol = () => collection(db, 'mesas');
@@ -13,6 +13,7 @@ export const seedMesasIfNeeded = async (config) => {
   const snap = await getDocs(mesasCol());
   if (!snap.empty) return;
 
+  await authReady;
   const batch = writeBatch(db);
   const allMesas = buildMesasList(config);
   for (const m of allMesas) {
@@ -32,6 +33,7 @@ export const syncMesasWithConfig = async (config) => {
   const desired = buildMesasList(config);
   const desiredIds = new Set(desired.map(m => m.id));
 
+  await authReady;
   const batch = writeBatch(db);
 
   for (const docId of existing) {

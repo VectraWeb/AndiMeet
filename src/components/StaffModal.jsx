@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, UserPlus, ToggleLeft, ToggleRight, Trash2, Grid, Plus } from 'lucide-react';
 import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, authReady } from '../firebase';
 import { C, inp, getAssignedTables } from '../utils';
 import { Overlay } from './ui';
 
@@ -18,6 +18,7 @@ export default function StaffModal({ staff, sectors, saveSectors, onClose }) {
     const name = newName.trim();
     if (!name) return;
     try {
+      await authReady;
       const id = `s${Date.now()}`;
       await setDoc(staffDoc(id), { name, active: true, assignedTables: [], createdAt: serverTimestamp() });
       setNewName('');
@@ -26,12 +27,14 @@ export default function StaffModal({ staff, sectors, saveSectors, onClose }) {
 
   const toggleActive = async (s) => {
     try {
+      await authReady;
       await setDoc(staffDoc(s.id), { active: s.active === false ? true : false }, { merge: true });
     } catch (e) { console.error(e); }
   };
 
   const removeStaff = async (s) => {
     try {
+      await authReady;
       await deleteDoc(staffDoc(s.id));
       if (sectors && saveSectors) {
         const filtered = sectors.filter(sec => sec.name !== s.name);
@@ -92,6 +95,7 @@ export default function StaffModal({ staff, sectors, saveSectors, onClose }) {
       .filter(n => String(n).trim() !== '')
       .filter(n => !/^m\d+$/i.test(String(n)));
     try {
+      await authReady;
       await setDoc(staffDoc(editingTables.id), { assignedTables: nums }, { merge: true });
       setEditingTables(null);
       setEditingNumbers([]);

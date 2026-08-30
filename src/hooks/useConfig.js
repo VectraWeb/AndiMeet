@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, authReady } from '../firebase';
 import { configToArray } from '../utils';
 
 const cfgRef = () => doc(db, 'config', 'restaurant');
@@ -26,6 +26,7 @@ export function useConfig() {
 
   const saveSectors = async (updatedSectors) => {
     setSectors(updatedSectors);
+    await authReady;
     await setDoc(cfgRef(), { sectors: updatedSectors }, { merge: true });
   };
 

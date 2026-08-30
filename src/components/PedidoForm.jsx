@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Check, AlertCircle, ArrowLeft, ShoppingBag, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, authReady } from '../firebase';
 import { C, todayISO } from '../utils';
 import { Field } from './ui';
 import PhoneField from './PhoneField';
@@ -81,6 +81,7 @@ export default function PedidoForm({ onBack, onStaffAccess }) {
     const id = `p${Date.now()}`;
 
     try {
+      await authReady;
       // GUARDADO SIMPLE: pedido del día, sin mesa ni horario fijado.
       // 'service' se guarda vacío (la regla de Firestore exige el campo,
       // pero el horario lo confirma el restaurante).

@@ -4,7 +4,7 @@
 // para cada grupo que cruza sectores.
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, authReady } from '../firebase';
 
 const layoutRef = () => doc(db, 'config', 'salon-layout');
 
@@ -49,6 +49,7 @@ export function useSalonLayout() {
     setGroupOwners(pruned);
     positionsRef.current = pos;
     groupsRef.current = grp || [];
+    await authReady;
     await setDoc(layoutRef(), {
       positions: pos,
       groups: grp || [],
@@ -65,6 +66,7 @@ export function useSalonLayout() {
     groupOwnersRef.current = next;
     setGroupOwners(next);
     try {
+      await authReady;
       await setDoc(layoutRef(), {
         positions: positionsRef.current,
         groups: groupsRef.current,

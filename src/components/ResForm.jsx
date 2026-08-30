@@ -4,7 +4,7 @@ import { Check, AlertCircle, Calendar, Clock, ArrowLeft } from 'lucide-react';
 import {
   doc, setDoc, serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, authReady } from '../firebase';
 import { C, SERVICES, serviceFromTime, defaultServiceTime, todayISO } from '../utils';
 import { Field } from './ui';
 import PhoneField from './PhoneField';
@@ -81,6 +81,7 @@ export default function ResForm({ onStaffAccess, onBack }) {
     const id = `r${Date.now()}`;
 
     try {
+      await authReady;
       // GUARDADO SIMPLE: Sin búsqueda de mesas, sin transacciones.
       // La reserva nace estrictamente como 'pendiente' y sin mesa asignada.
       await setDoc(resDocRef(id), {

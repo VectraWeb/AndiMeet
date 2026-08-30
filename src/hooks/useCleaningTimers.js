@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { doc, updateDoc, arrayUnion, serverTimestamp, deleteDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, authReady } from '../firebase';
 import { notificarN8N, computeStateDurations } from '../utils';
 
 export const CLEANING_DURATION_MS = 5 * 60 * 1000;
@@ -66,6 +66,7 @@ async function saveMetrics(res, tables) {
   };
 
   try {
+    await authReady;
     await setDoc(doc(db, 'metricas_reservas', res.id), metrics, { merge: true });
   } catch (e) {
     console.warn('[CleaningTimer] Error guardando métricas:', e);
@@ -98,6 +99,7 @@ export function useCleaningTimers(reservations, date, tables) {
     });
 
     try {
+      await authReady;
       if (res.tableId && res.service) {
         await deleteDoc(mesaReservadaRef(res.tableId, date, res.service)).catch(() => {});
       }
@@ -172,6 +174,7 @@ export function useCleaningTimers(reservations, date, tables) {
     if (timer) {
       timer.expiresAt += EXTEND_MS;
       const newStartedAt = new Date(timer.expiresAt - CLEANING_DURATION_MS);
+      await authReady;
       await updateDoc(resDocRef(res.id), { cleaningStartedAt: newStartedAt.toISOString() }).catch(() => {});
       setSharedTimers(prev => ({
         ...prev,
@@ -187,6 +190,7 @@ export function useCleaningTimers(reservations, date, tables) {
       delete timersRef.current[res.id];
       removeShared(timer.tableId);
     }
+    await authReady;
     await updateDoc(resDocRef(res.id), {
       liveState: null,
       cleaningStartedAt: null,

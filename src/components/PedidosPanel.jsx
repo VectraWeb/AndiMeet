@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, authReady } from '../firebase';
 import { C, PEDIDO_ESTADOS, notificarN8N } from '../utils';
 import { XCircle, MessageCircle, Check, AlertCircle, Trash2 } from 'lucide-react';
 import PedidoStateModal from './PedidoStateModal';
@@ -274,6 +274,7 @@ export default function PedidosPanel({ date, service }) {
 
   const handleConfirmTime = async (pedido, { prepMin, envioMin, totalMin }) => {
     try {
+      await authReady;
       await updateDoc(doc(db, 'pedidos', pedido.id), {
         pedidoEstado: 'en_preparacion',
         tiempoPreparacionMin: prepMin,
@@ -298,6 +299,7 @@ export default function PedidosPanel({ date, service }) {
   const rejectPedido = async (id) => {
     if (!rejectReason.trim()) return;
     try {
+      await authReady;
       await updateDoc(doc(db, 'pedidos', id), {
         pedidoEstado: 'cancelado',
         pedidoRechazoMotivo: rejectReason.trim(),
@@ -318,6 +320,7 @@ export default function PedidosPanel({ date, service }) {
 
   const deletePedido = async (id) => {
     try {
+      await authReady;
       await deleteDoc(doc(db, 'pedidos', id));
       setDeleteConfirmId(null);
     } catch (err) {
@@ -386,6 +389,7 @@ export default function PedidosPanel({ date, service }) {
 
 async function updatePedidoEstado(id, newEstado) {
   try {
+    await authReady;
     await updateDoc(doc(db, 'pedidos', id), { pedidoEstado: newEstado });
     if (newEstado === 'cancelado') {
       notificarN8N({

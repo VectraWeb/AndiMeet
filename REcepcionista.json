@@ -1554,7 +1554,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyCWXxMZyTC-J8IFfR8h-8TgvNbWbhftHPY",
+        "url": "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyAR1MqhAlQV8IkH0DeJE8qMhgqAtuVVmg8",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\"returnSecureToken\":true}",
@@ -1826,7 +1826,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ Object.values($json)[0] }}",
+              "leftValue": "={{ $json.dedupe_count }}",
               "rightValue": 1,
               "operator": {
                 "type": "number",
@@ -1918,6 +1918,19 @@
           "name": "Evolution account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const dedupe = $input.first().json;\nconst webhook = $('Webhook1').first().json;\n\nreturn [{\n  json: {\n    ...webhook,\n    dedupe_count: Object.values(dedupe)[0] || 0\n  }\n}];"
+      },
+      "id": "merge-webhook-data",
+      "name": "Merge Webhook Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -79456,
+        -3904
+      ]
     }
   ],
   "pinData": {},
@@ -2628,7 +2641,7 @@
       "main": [
         [
           {
-            "node": "¿Mensaje nuevo?",
+            "node": "Merge Webhook Data",
             "type": "main",
             "index": 0
           }
@@ -2665,6 +2678,17 @@
         [
           {
             "node": "Send Cancel Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Webhook Data": {
+      "main": [
+        [
+          {
+            "node": "¿Mensaje nuevo?",
             "type": "main",
             "index": 0
           }

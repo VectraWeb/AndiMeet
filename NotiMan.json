@@ -3,18 +3,113 @@
   "nodes": [
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "reminder-future-condition",
+              "leftValue": "={{ (() => { const t = Date.parse($json.remind_at || ''); return !isNaN(t) && t > Date.now(); })() }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "83e75a09-55df-4424-b8f6-60d7840a07bc",
+      "name": "Validar horario recordatorio",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -17136,
+        -2704
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "c1beeb98-b333-4462-9c16-c91499d916e3",
+      "name": "Fin: sin recordatorio",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -16800,
+        -2448
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{ $json.remind_at }}"
+      },
+      "id": "fdfc5e80-f8cc-41c4-94d7-3a2c37f4778c",
+      "name": "Esperar horario recordatorio",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -16896,
+        -2704
+      ],
+      "webhookId": "9ac75ce9-bcb4-46aa-8bd7-23f5c41516ae"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "projectId": "andimeet-93f62",
+        "collection": "reservations",
+        "documentId": "={{ $('Normalizar entrada1').first().json.document_id }}"
+      },
+      "id": "e3676230-5ab1-4ff8-9ec7-6ac44feffa83",
+      "name": "Leer reserva para recordatorio",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1.1,
+      "position": [
+        -16656,
+        -2704
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "4oMTtyVYbyEwbL9v",
+          "name": "Google Service Account account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Arma el payload del recordatorio desde la lectura fresca del doc.\nconst norm = $('Normalizar entrada1').first().json;\nconst document_id = String(norm.document_id || '').trim();\nconst rawInput = ($input.first() || {}).json || {};\n\n// El nodo Firestore nativo de n8n puede devolver datos de dos formas:\n// 1. Planos: { customerPhone: \"549...\", customerName: \"...\", ... }\n// 2. Con wrapper REST API: { fields: { customerPhone: { stringValue: \"549...\" } } }\nconst getField = (d, k) => {\n  if (!d || typeof d !== 'object') return null;\n  // Formato REST API (via HTTP): d.fields[k].stringValue\n  if (d.fields && d.fields[k] !== undefined) {\n    const f = d.fields[k];\n    if (f === null || f === undefined) return null;\n    if (f.stringValue !== undefined) return f.stringValue;\n    if (f.integerValue !== undefined) return parseInt(f.integerValue);\n    if (f.booleanValue !== undefined) return f.booleanValue;\n    if (f.doubleValue !== undefined) return parseFloat(f.doubleValue);\n    return null;\n  }\n  // Formato plano (nodo nativo n8n): d[k]\n  const v = d[k];\n  if (v === undefined || v === null) return null;\n  // A veces el nodo nativo anida el valor como objeto con stringValue\n  if (typeof v === 'object' && v.stringValue !== undefined) return v.stringValue;\n  if (typeof v === 'object' && v.integerValue !== undefined) return parseInt(v.integerValue);\n  return v;\n};\n\nconst normalizePhone = (v) => {\n  let s = String(v || '').replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  return '54' + s;\n};\n\nif (!document_id) return [];\nconst estado = String(getField(rawInput, 'estado') || '').toLowerCase();\nif (!rawInput || rawInput.error) return [];\nif (['cancelado', 'cancelada', 'no_show', 'ausente', 'finalizado'].includes(estado)) return [];\n\nconst time = getField(rawInput, 'time');\nconst name = String(getField(rawInput, 'customerName') || '').trim();\nconst phone = normalizePhone(getField(rawInput, 'customerPhone') || getField(rawInput, 'phone'));\nconst mesaRaw = String(getField(rawInput, 'mesa') || getField(rawInput, 'tableId') || getField(rawInput, 'mesa_id') || '');\nif (!time || !name) return []; // phone optional: manual reservations may not have it\nconst mesaNum = mesaRaw.replace(/^mesa\\s+/i, '').replace(/^m(?=\\d)/i, '');\n\nreturn [{ json: {\n  document_id,\n  reminder_key: 'reminder15_' + document_id,\n  phone,\n  name,\n  time,\n  mesa: mesaNum,\n} }];"
+      },
+      "id": "4bfe0d08-ffff-40c4-9c7b-62f44affb305",
+      "name": "Normalizar recordatorio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16416,
+        -2704
+      ]
+    },
+    {
+      "parameters": {
         "httpMethod": "POST",
         "path": "whatsapp/notificar-confirmado",
         "authentication": "headerAuth",
         "options": {}
       },
-      "id": "c15a3d42-3030-4947-be48-6aa168ca1ee1",
-      "name": "Entrada: solicitud confirmada",
+      "id": "0f98ecec-1bad-4157-b7e7-f1b3933e36dd",
+      "name": "Entrada: solicitud confirmada1",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -16096,
-        -2224
+        -17296,
+        -3728
       ],
       "webhookId": "andi-whatsapp-notifier-confirmed",
       "credentials": {
@@ -80,13 +175,13 @@
         },
         "options": {}
       },
-      "id": "5446a5de-3d2a-4233-b960-b57889a2e11f",
-      "name": "Normalizar entrada",
+      "id": "8fa69a7b-82c1-4765-a365-f7eb4ca8314e",
+      "name": "Normalizar entrada1",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -15856,
-        -2224
+        -17056,
+        -3728
       ]
     },
     {
@@ -113,13 +208,13 @@
         },
         "options": {}
       },
-      "id": "f9fccddf-4de8-4449-b298-d801baeadc1b",
-      "name": "¿document_id válido?",
+      "id": "9ad931cd-e8b9-47fb-9142-aa41c9df3c4b",
+      "name": "¿document_id válido?1",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -15616,
-        -2224
+        -16816,
+        -3728
       ]
     },
     {
@@ -129,13 +224,13 @@
         "expire": true,
         "ttl": 86400
       },
-      "id": "0f1a8a30-176a-4d02-bbf9-75f5c62022c9",
-      "name": "Redis GET: notified",
+      "id": "cb88c186-97b2-44b2-9b01-53fd613d7523",
+      "name": "Redis GET: notified1",
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        -15136,
-        -2384
+        -16176,
+        -3584
       ],
       "credentials": {
         "redis": {
@@ -168,29 +263,29 @@
         },
         "options": {}
       },
-      "id": "3d3ff60c-91c2-4282-bf6a-d65711a7189c",
-      "name": "¿Ya notificado?",
+      "id": "92d0799c-3343-4bda-9bc1-02da75575d4c",
+      "name": "¿Ya notificado?1",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -14896,
-        -2384
+        -15936,
+        -3584
       ]
     },
     {
       "parameters": {
         "authentication": "serviceAccount",
         "projectId": "andimeet-93f62",
-        "collection": "={{ $('Normalizar entrada').first().json.firestore_collection }}",
-        "documentId": "={{ $('Normalizar entrada').first().json.document_id }}"
+        "collection": "={{ $('Normalizar entrada1').first().json.firestore_collection }}",
+        "documentId": "={{ $('Normalizar entrada1').first().json.document_id }}"
       },
-      "id": "5616d39d-f944-48af-a42d-08172246f0ab",
-      "name": "Firestore GET: solicitud",
+      "id": "731b3e32-39ec-493d-9038-58f405985a5c",
+      "name": "Firestore GET: solicitud1",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
       "position": [
-        -14656,
-        -2224
+        -15696,
+        -3424
       ],
       "credentials": {
         "googleApi": {
@@ -207,13 +302,13 @@
             {
               "id": "notifier-data-document-id",
               "name": "document_id",
-              "value": "={{ $('Normalizar entrada').first().json.document_id }}",
+              "value": "={{ $('Normalizar entrada1').first().json.document_id }}",
               "type": "string"
             },
             {
               "id": "notifier-data-cache-key",
               "name": "cache_key",
-              "value": "={{ $('Normalizar entrada').first().json.cache_key }}",
+              "value": "={{ $('Normalizar entrada1').first().json.cache_key }}",
               "type": "string"
             },
             {
@@ -286,13 +381,13 @@
         },
         "options": {}
       },
-      "id": "f081d7e8-3563-487d-ac7d-41cf196f2123",
-      "name": "Normalizar datos Firestore",
+      "id": "9070d571-7582-4c4e-8dad-72ebfe7d5039",
+      "name": "Normalizar datos Firestore1",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -14416,
-        -2224
+        -15456,
+        -3424
       ]
     },
     {
@@ -319,13 +414,13 @@
         },
         "options": {}
       },
-      "id": "a9671545-a2d5-4d63-8e5d-de65d412408f",
-      "name": "¿Confirmada y pendiente?",
+      "id": "cbc29983-9feb-49b9-b9c7-4a62a934e4a2",
+      "name": "¿Confirmada y pendiente?1",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -13936,
-        -2384
+        -14976,
+        -3584
       ]
     },
     {
@@ -387,13 +482,13 @@
           "renameFallbackOutput": "Tipo no soportado"
         }
       },
-      "id": "55e60e70-ff65-40cd-8e35-73bf20b06b1e",
-      "name": "Switch: tipo de solicitud",
+      "id": "7e21d07e-43e4-4336-9e54-7260a4e4cb5a",
+      "name": "Switch: tipo de solicitud1",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -13696,
-        -2384
+        -14784,
+        -3776
       ]
     },
     {
@@ -428,13 +523,13 @@
         },
         "options": {}
       },
-      "id": "a361474a-0cb6-45c9-ac53-7e67cbab2c6a",
-      "name": "Preparar mensaje: reserva",
+      "id": "6f3f4df2-3040-433c-abe7-5a089852ac78",
+      "name": "Preparar mensaje: reserva1",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -13456,
-        -2544
+        -14448,
+        -3824
       ]
     },
     {
@@ -469,32 +564,32 @@
         },
         "options": {}
       },
-      "id": "9d68b54b-3448-46d9-a10a-6f11cfc0a264",
-      "name": "Preparar mensaje: pedido",
+      "id": "31942ea4-e121-41d7-a3ad-bf9bd7b4f915",
+      "name": "Preparar mensaje: pedido1",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -13456,
-        -2304
+        -14416,
+        -3616
       ]
     },
     {
       "parameters": {
         "resource": "messages-api",
         "instanceName": "andimeet",
-        "remoteJid": "={{ $json.phone }}",
+        "remoteJid": "={{ String($json.phone).includes(\"@s.whatsapp.net\") ? $json.phone : $json.phone + \"@s.whatsapp.net\" }}",
         "messageText": "={{ $json.message }}",
         "options_message": {
           "delay": 1200
         }
       },
-      "id": "b24c631a-5794-455d-8eec-f7efe5cbb3cb",
-      "name": "Enviar WhatsApp: Evolution API",
+      "id": "0dd5ef2b-838b-4d17-9228-2748c450f852",
+      "name": "Enviar WhatsApp: Evolution API1",
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -13056,
-        -2384
+        -14096,
+        -3584
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -511,7 +606,7 @@
             {
               "id": "notifier-mark-document-id",
               "name": "document_id",
-              "value": "={{ $('Normalizar datos Firestore').first().json.document_id }}",
+              "value": "={{ $('Normalizar datos Firestore1').first().json.document_id }}",
               "type": "string"
             },
             {
@@ -524,13 +619,13 @@
         },
         "options": {}
       },
-      "id": "d84626b3-8053-4cea-af09-ec3d5131d7e5",
-      "name": "Marcar notificacion_enviada",
+      "id": "a5f3ace8-d4e9-4906-96c7-2417123e8ad6",
+      "name": "Marcar notificacion_enviada1",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -12576,
-        -2512
+        -13616,
+        -3712
       ]
     },
     {
@@ -538,17 +633,17 @@
         "authentication": "serviceAccount",
         "operation": "upsert",
         "projectId": "andimeet-93f62",
-        "collection": "={{ $('Normalizar entrada').first().json.firestore_collection }}",
+        "collection": "={{ $('Normalizar entrada1').first().json.firestore_collection }}",
         "updateKey": "document_id",
         "columns": "notificacion_enviada"
       },
-      "id": "74b61227-9788-4285-89bf-dbe324344afd",
-      "name": "Firestore UPDATE: notificacion_enviada",
+      "id": "a099b68d-6f8c-4cde-854c-c311bfbb6662",
+      "name": "Firestore UPDATE: notificacion_enviada1",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
       "position": [
-        -12336,
-        -2512
+        -13376,
+        -3712
       ],
       "credentials": {
         "googleApi": {
@@ -559,57 +654,57 @@
     },
     {
       "parameters": {},
-      "id": "413bf485-aec9-45eb-89f4-c89019cdb9aa",
-      "name": "Fin: notificación enviada",
+      "id": "f541465d-5935-4cde-9412-25c2d3c155bc",
+      "name": "Fin: notificación enviada1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -11856,
-        -2512
+        -12896,
+        -3712
       ]
     },
     {
       "parameters": {},
-      "id": "b0b19adb-ba42-4787-be1d-39fca3a3b73c",
-      "name": "Fin: ya notificado",
+      "id": "9791ebbf-f40f-49f7-9272-b07e9310f74d",
+      "name": "Fin: ya notificado1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -14656,
-        -2512
+        -15696,
+        -3712
       ]
     },
     {
       "parameters": {},
-      "id": "5406beab-31ea-4c05-87d2-5c8690138984",
-      "name": "Fin: entrada inválida",
+      "id": "70c39600-3c98-439a-a433-8d8accd6c6b2",
+      "name": "Fin: entrada inválida1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -15616,
-        -1984
+        -16688,
+        -3392
       ]
     },
     {
       "parameters": {},
-      "id": "179b4d68-8a6d-4fd6-bb1f-6828c4639f03",
-      "name": "Fin: no corresponde notificar",
+      "id": "914b0aff-2c7c-452e-8669-1c1096d3d357",
+      "name": "Fin: no corresponde notificar1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -13200,
-        -1984
+        -14112,
+        -2896
       ]
     },
     {
       "parameters": {},
-      "id": "d29c7857-b644-4a76-8281-ec746f362bb7",
-      "name": "Fin: tipo no soportado",
+      "id": "c4dfb439-321f-48d3-90f0-bf2d6eeca5aa",
+      "name": "Fin: tipo no soportado1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -13392,
-        -1888
+        -14400,
+        -3312
       ]
     },
     {
@@ -627,7 +722,7 @@
                 "conditions": [
                   {
                     "id": "evt-confirm-1",
-                    "leftValue": "={{ $('Normalizar entrada').first().json.evento }}",
+                    "leftValue": "={{ $('Normalizar entrada1').first().json.evento }}",
                     "rightValue": "solicitud_confirmada",
                     "operator": {
                       "type": "string",
@@ -651,7 +746,7 @@
                 "conditions": [
                   {
                     "id": "evt-reject-1",
-                    "leftValue": "={{ $('Normalizar entrada').first().json.evento }}",
+                    "leftValue": "={{ $('Normalizar entrada1').first().json.evento }}",
                     "rightValue": "solicitud_rechazada",
                     "operator": {
                       "type": "string",
@@ -675,7 +770,7 @@
                 "conditions": [
                   {
                     "id": "evt-reminder-1",
-                    "leftValue": "={{ $('Normalizar entrada').first().json.evento }}",
+                    "leftValue": "={{ $('Normalizar entrada1').first().json.evento }}",
                     "rightValue": "recordatorio_programar",
                     "operator": {
                       "type": "string",
@@ -695,13 +790,13 @@
           "renameFallbackOutput": "Evento desconocido"
         }
       },
-      "id": "eb5b24f7-d253-4bbb-9e7a-3894eaa3a9de",
-      "name": "Switch: evento",
+      "id": "fd1995a9-b8ed-4f85-a4c6-2237593cec8e",
+      "name": "Switch: evento1",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -15376,
-        -2224
+        -16448,
+        -3440
       ]
     },
     {
@@ -711,13 +806,13 @@
         "expire": true,
         "ttl": 86400
       },
-      "id": "6a416bc1-9fb9-4163-a7e8-46f6bec68eb1",
-      "name": "Redis GET: rejected",
+      "id": "5caef39c-fb33-4098-a678-48274fb58462",
+      "name": "Redis GET: rejected1",
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        -15136,
-        -2064
+        -16176,
+        -3264
       ],
       "credentials": {
         "redis": {
@@ -750,24 +845,24 @@
         },
         "options": {}
       },
-      "id": "84336320-22b2-48f5-8af6-c35a9711c62e",
-      "name": "¿Ya rechazado?",
+      "id": "bdf643be-ff63-479d-9da0-e1bdb3b44276",
+      "name": "¿Ya rechazado?1",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -14896,
-        -2064
+        -15936,
+        -3264
       ]
     },
     {
       "parameters": {},
-      "id": "d8fcef7f-a56a-4467-bcb8-408c0bfeab70",
-      "name": "Fin: ya rechazado",
+      "id": "6f6d3c45-40ee-40b5-b75b-8621db02519f",
+      "name": "Fin: ya rechazado1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -14656,
-        -1952
+        -15696,
+        -3152
       ]
     },
     {
@@ -785,7 +880,7 @@
                 "conditions": [
                   {
                     "id": "evt-confirm-2",
-                    "leftValue": "={{ $('Normalizar entrada').first().json.evento }}",
+                    "leftValue": "={{ $('Normalizar entrada1').first().json.evento }}",
                     "rightValue": "solicitud_confirmada",
                     "operator": {
                       "type": "string",
@@ -809,7 +904,7 @@
                 "conditions": [
                   {
                     "id": "evt-reject-2",
-                    "leftValue": "={{ $('Normalizar entrada').first().json.evento }}",
+                    "leftValue": "={{ $('Normalizar entrada1').first().json.evento }}",
                     "rightValue": "solicitud_rechazada",
                     "operator": {
                       "type": "string",
@@ -829,13 +924,13 @@
           "renameFallbackOutput": "Evento desconocido"
         }
       },
-      "id": "d986b53e-16d5-4e15-af9d-e7d2200d038c",
-      "name": "Switch: evento (2)",
+      "id": "07bdb07b-29ee-4ac8-84e8-4635bf52dc5c",
+      "name": "Switch: evento (2)1",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -14176,
-        -2224
+        -15216,
+        -3424
       ]
     },
     {
@@ -864,13 +959,13 @@
         },
         "options": {}
       },
-      "id": "aee8be33-b11a-4a23-80a3-0cb697c6e322",
-      "name": "Preparar mensaje: rechazo",
+      "id": "71d8a3b3-ddbc-4d10-b6f3-5ea7ead1c7b5",
+      "name": "Preparar mensaje: rechazo1",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -13440,
-        -2144
+        -14352,
+        -3184
       ]
     },
     {
@@ -888,7 +983,7 @@
                 "conditions": [
                   {
                     "id": "evt-confirm-3",
-                    "leftValue": "={{ $('Normalizar entrada').first().json.evento }}",
+                    "leftValue": "={{ $('Normalizar entrada1').first().json.evento }}",
                     "rightValue": "solicitud_confirmada",
                     "operator": {
                       "type": "string",
@@ -912,7 +1007,7 @@
                 "conditions": [
                   {
                     "id": "evt-reject-3",
-                    "leftValue": "={{ $('Normalizar entrada').first().json.evento }}",
+                    "leftValue": "={{ $('Normalizar entrada1').first().json.evento }}",
                     "rightValue": "solicitud_rechazada",
                     "operator": {
                       "type": "string",
@@ -932,13 +1027,13 @@
           "renameFallbackOutput": "Evento desconocido"
         }
       },
-      "id": "057161b8-c245-4c26-90f3-aa8a87e737e8",
-      "name": "Switch: post-envío",
+      "id": "ccc57e3b-c639-4e9e-9948-fd8933c878f9",
+      "name": "Switch: post-envío1",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -12816,
-        -2384
+        -13856,
+        -3584
       ]
     },
     {
@@ -948,7 +1043,7 @@
             {
               "id": "notifier-mark-rejected-document-id",
               "name": "document_id",
-              "value": "={{ $('Normalizar datos Firestore').first().json.document_id }}",
+              "value": "={{ $('Normalizar datos Firestore1').first().json.document_id }}",
               "type": "string"
             },
             {
@@ -961,13 +1056,13 @@
         },
         "options": {}
       },
-      "id": "8b2b00be-1f54-4476-81c2-70a75bdc9fc9",
-      "name": "Marcar rechazo notificado",
+      "id": "534a391e-350b-45b3-ac97-1450f5142ff2",
+      "name": "Marcar rechazo notificado1",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -12576,
-        -2224
+        -13616,
+        -3424
       ]
     },
     {
@@ -975,17 +1070,17 @@
         "authentication": "serviceAccount",
         "operation": "upsert",
         "projectId": "andimeet-93f62",
-        "collection": "={{ $('Normalizar entrada').first().json.firestore_collection }}",
+        "collection": "={{ $('Normalizar entrada1').first().json.firestore_collection }}",
         "updateKey": "document_id",
         "columns": "rechazo_notificado"
       },
-      "id": "80c70462-5a20-41da-bbb6-4cc60c0e5142",
-      "name": "Firestore UPDATE: rechazo_notificado",
+      "id": "700893b1-79aa-4203-a584-599929f53187",
+      "name": "Firestore UPDATE: rechazo_notificado1",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
       "position": [
-        -12336,
-        -2224
+        -13376,
+        -3424
       ],
       "credentials": {
         "googleApi": {
@@ -996,13 +1091,13 @@
     },
     {
       "parameters": {},
-      "id": "e8257941-506c-41e1-b4f1-da5474ec54a5",
-      "name": "Fin: rechazo enviado",
+      "id": "a8008a65-711f-4baa-bd47-28fe32ac5235",
+      "name": "Fin: rechazo enviado1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -11856,
-        -2224
+        -12896,
+        -3424
       ]
     },
     {
@@ -1012,13 +1107,13 @@
         "expire": true,
         "ttl": 86400
       },
-      "id": "d26dbd9a-286c-4d2e-a595-19062594adb1",
-      "name": "Redis GET: reminder15",
+      "id": "37df8b73-6f12-45bc-a7d3-ae9b03ad31ff",
+      "name": "Redis GET: reminder",
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        -15376,
-        -1744
+        -16048,
+        -2608
       ],
       "credentials": {
         "redis": {
@@ -1051,24 +1146,24 @@
         },
         "options": {}
       },
-      "id": "3aa02caf-6d00-4fb4-8b0f-48232b7397bc",
-      "name": "¿Recordatorio ya enviado?",
+      "id": "abffb017-73fc-41c8-93c1-90b0ed931071",
+      "name": "¿Recordatorio ya enviado?1",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -15136,
-        -1744
+        -15808,
+        -2608
       ]
     },
     {
       "parameters": {},
-      "id": "df6af322-38a2-4478-b33f-d86a5ed1db79",
-      "name": "Fin: recordatorio ya enviado",
+      "id": "c98fcbf1-1b46-487f-8046-2450b9d4c2f2",
+      "name": "Fin: recordatorio ya enviado1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -14896,
-        -1632
+        -15504,
+        -2832
       ]
     },
     {
@@ -1103,32 +1198,32 @@
         },
         "options": {}
       },
-      "id": "ff651e78-c63e-40b1-b05c-270e790db5b0",
-      "name": "Preparar mensaje: recordatorio",
+      "id": "8eadb5f0-0da9-4bae-84c8-4d0bfaec2f97",
+      "name": "Preparar mensaje: recordatorio1",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -14896,
-        -1744
+        -15568,
+        -2608
       ]
     },
     {
       "parameters": {
         "resource": "messages-api",
         "instanceName": "andimeet",
-        "remoteJid": "={{ $json.phone }}",
+        "remoteJid": "={{ String($json.phone).includes(\"@s.whatsapp.net\") ? $json.phone : $json.phone + \"@s.whatsapp.net\" }}",
         "messageText": "={{ $json.message }}",
         "options_message": {
           "delay": 1000
         }
       },
-      "id": "75ec7ab5-997c-4496-b648-2b2417aee7bd",
-      "name": "Enviar WhatsApp: recordatorio",
+      "id": "8764442a-fa55-4464-8118-1208464e737b",
+      "name": "Enviar WhatsApp: recordatorio1",
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -14656,
-        -1744
+        -15328,
+        -2608
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -1158,13 +1253,13 @@
         },
         "options": {}
       },
-      "id": "5e5228b1-3ba7-44e8-8fed-7a70ef748fdd",
-      "name": "Marcar recordatorio enviado",
+      "id": "7bf683ee-fef3-4b21-9a36-d1b7efa75b99",
+      "name": "Marcar recordatorio enviado1",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -14416,
-        -1744
+        -15088,
+        -2608
       ]
     },
     {
@@ -1176,13 +1271,13 @@
         "updateKey": "document_id",
         "columns": "recordatorio15_enviado"
       },
-      "id": "93fc7362-c316-4843-be0b-5db7a83c4e43",
-      "name": "Firestore UPDATE: recordatorio15",
+      "id": "44722053-35c0-40ab-a8c8-7bc21ab37796",
+      "name": "Firestore UPDATE: recordatorio",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
       "position": [
-        -14176,
-        -1744
+        -14848,
+        -2608
       ],
       "credentials": {
         "googleApi": {
@@ -1193,518 +1288,18 @@
     },
     {
       "parameters": {},
-      "id": "b058ec70-b799-47be-8bf5-9c6113310491",
-      "name": "Fin: recordatorio enviado",
+      "id": "c99d0f8a-d2ed-4cc1-b98e-8b78af2f3694",
+      "name": "Fin: recordatorio enviado1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -13696,
-        -1744
+        -14368,
+        -2608
       ]
-    },
-    {
-      "id": "3fc59538-0c65-4bac-8613-21fc9ca2cf85",
-      "name": "Validar horario recordatorio",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -16096,
-        -1504
-      ],
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "reminder-future-condition",
-              "leftValue": "={{ (() => { const t = Date.parse($json.remind_at || ''); return !isNaN(t) && t > Date.now(); })() }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      }
-    },
-    {
-      "id": "bca31c3e-3830-4760-8f3e-674f81542150",
-      "name": "Fin: sin recordatorio",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        -16096,
-        -1264
-      ],
-      "parameters": {}
-    },
-    {
-      "id": "2c612b57-26cf-415a-a642-583b99e308f3",
-      "name": "Esperar horario recordatorio",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        -15856,
-        -1504
-      ],
-      "parameters": {
-        "resume": "specificTime",
-        "dateTime": "={{ $json.remind_at }}"
-      }
-    },
-    {
-      "id": "aef1475e-d11a-410a-84d7-a45915f16616",
-      "name": "Leer reserva para recordatorio",
-      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
-      "typeVersion": 1.1,
-      "position": [
-        -15616,
-        -1504
-      ],
-      "onError": "continueRegularOutput",
-      "credentials": {
-        "googleApi": {
-          "id": "4oMTtyVYbyEwbL9v",
-          "name": "Google Service Account account"
-        }
-      },
-      "parameters": {
-        "authentication": "serviceAccount",
-        "projectId": "andimeet-93f62",
-        "collection": "reservations",
-        "documentId": "={{ $('Normalizar entrada').first().json.document_id }}"
-      }
-    },
-    {
-      "id": "1181f1da-b83e-4fc6-bea8-c0b682cebfa8",
-      "name": "Normalizar recordatorio",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -15376,
-        -1504
-      ],
-      "parameters": {
-        "jsCode": "// Arma el payload del recordatorio desde la lectura fresca del doc.\n// Devuelve [] (termina la rama) si la reserva ya no está vigente.\nconst norm = $('Normalizar entrada').first().json;\nconst document_id = String(norm.document_id || '').trim();\nconst raw = ($input.first() || {}).json || {};\n\nconst getField = (d, k) => {\n  if (!d || typeof d !== 'object') return null;\n  if (d.fields && d.fields[k] !== undefined) {\n    const f = d.fields[k];\n    if (f === null || f === undefined) return null;\n    if (f.stringValue !== undefined) return f.stringValue;\n    if (f.integerValue !== undefined) return parseInt(f.integerValue);\n    if (f.booleanValue !== undefined) return f.booleanValue;\n    if (f.doubleValue !== undefined) return parseFloat(f.doubleValue);\n    return null;\n  }\n  return d[k] !== undefined ? d[k] : null;\n};\n\nconst normalizePhone = (v) => {\n  let s = String(v || '').replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  return '54' + s;\n};\n\nif (!document_id) return [];\nconst estado = String(getField(raw, 'estado') || '').toLowerCase();\n// Cancelada/finalizada/ausente, o doc eliminado (raw trae {error}): no avisar.\nif (!raw || raw.error) return [];\nif (['cancelado', 'cancelada', 'no_show', 'ausente', 'finalizado'].includes(estado)) return [];\n\nconst time = getField(raw, 'time');\nconst name = String(getField(raw, 'customerName') || '').trim();\nconst phone = normalizePhone(getField(raw, 'customerPhone') || getField(raw, 'phone'));\nconst mesaRaw = String(getField(raw, 'mesa') || getField(raw, 'tableId') || getField(raw, 'mesa_id') || '');\nif (!time || !phone || !name) return [];\nif (estado === 'pendiente' && !mesaRaw) return []; // nunca fue confirmada\nconst mesaNum = mesaRaw.replace(/^mesa\\s+/i, '').replace(/^m(?=\\d)/i, '');\n\nreturn [{ json: {\n  document_id,\n  reminder_key: 'reminder15_' + document_id,\n  phone,\n  name,\n  time,\n  mesa: mesaNum,\n} }];"
-      }
     }
   ],
   "pinData": {},
   "connections": {
-    "Entrada: solicitud confirmada": {
-      "main": [
-        [
-          {
-            "node": "Normalizar entrada",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Normalizar entrada": {
-      "main": [
-        [
-          {
-            "node": "¿document_id válido?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "¿document_id válido?": {
-      "main": [
-        [
-          {
-            "node": "Switch: evento",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Fin: entrada inválida",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Redis GET: notified": {
-      "main": [
-        [
-          {
-            "node": "¿Ya notificado?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "¿Ya notificado?": {
-      "main": [
-        [
-          {
-            "node": "Fin: ya notificado",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Firestore GET: solicitud",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Firestore GET: solicitud": {
-      "main": [
-        [
-          {
-            "node": "Normalizar datos Firestore",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Normalizar datos Firestore": {
-      "main": [
-        [
-          {
-            "node": "Switch: evento (2)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "¿Confirmada y pendiente?": {
-      "main": [
-        [
-          {
-            "node": "Switch: tipo de solicitud",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Fin: no corresponde notificar",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Switch: tipo de solicitud": {
-      "main": [
-        [
-          {
-            "node": "Preparar mensaje: reserva",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Preparar mensaje: pedido",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Fin: tipo no soportado",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Preparar mensaje: reserva": {
-      "main": [
-        [
-          {
-            "node": "Enviar WhatsApp: Evolution API",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Preparar mensaje: pedido": {
-      "main": [
-        [
-          {
-            "node": "Enviar WhatsApp: Evolution API",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Enviar WhatsApp: Evolution API": {
-      "main": [
-        [
-          {
-            "node": "Switch: post-envío",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Marcar notificacion_enviada": {
-      "main": [
-        [
-          {
-            "node": "Firestore UPDATE: notificacion_enviada",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Firestore UPDATE: notificacion_enviada": {
-      "main": [
-        [
-          {
-            "node": "Fin: notificación enviada",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Switch: evento": {
-      "main": [
-        [
-          {
-            "node": "Redis GET: notified",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Redis GET: rejected",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Validar horario recordatorio",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Fin: no corresponde notificar",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Redis GET: rejected": {
-      "main": [
-        [
-          {
-            "node": "¿Ya rechazado?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "¿Ya rechazado?": {
-      "main": [
-        [
-          {
-            "node": "Fin: ya rechazado",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Firestore GET: solicitud",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Switch: evento (2)": {
-      "main": [
-        [
-          {
-            "node": "¿Confirmada y pendiente?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Preparar mensaje: rechazo",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Fin: no corresponde notificar",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Preparar mensaje: rechazo": {
-      "main": [
-        [
-          {
-            "node": "Enviar WhatsApp: Evolution API",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Switch: post-envío": {
-      "main": [
-        [
-          {
-            "node": "Marcar notificacion_enviada",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Marcar rechazo notificado",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Fin: no corresponde notificar",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Marcar rechazo notificado": {
-      "main": [
-        [
-          {
-            "node": "Firestore UPDATE: rechazo_notificado",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Firestore UPDATE: rechazo_notificado": {
-      "main": [
-        [
-          {
-            "node": "Fin: rechazo enviado",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Redis GET: reminder15": {
-      "main": [
-        [
-          {
-            "node": "¿Recordatorio ya enviado?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "¿Recordatorio ya enviado?": {
-      "main": [
-        [
-          {
-            "node": "Fin: recordatorio ya enviado",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Preparar mensaje: recordatorio",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Preparar mensaje: recordatorio": {
-      "main": [
-        [
-          {
-            "node": "Enviar WhatsApp: recordatorio",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Enviar WhatsApp: recordatorio": {
-      "main": [
-        [
-          {
-            "node": "Marcar recordatorio enviado",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Marcar recordatorio enviado": {
-      "main": [
-        [
-          {
-            "node": "Firestore UPDATE: recordatorio15",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Firestore UPDATE: recordatorio15": {
-      "main": [
-        [
-          {
-            "node": "Fin: recordatorio enviado",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Validar horario recordatorio": {
       "main": [
         [
@@ -1749,7 +1344,413 @@
       "main": [
         [
           {
-            "node": "Redis GET: reminder15",
+            "node": "Redis GET: reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entrada: solicitud confirmada1": {
+      "main": [
+        [
+          {
+            "node": "Normalizar entrada1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar entrada1": {
+      "main": [
+        [
+          {
+            "node": "¿document_id válido?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿document_id válido?1": {
+      "main": [
+        [
+          {
+            "node": "Switch: evento1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fin: entrada inválida1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis GET: notified1": {
+      "main": [
+        [
+          {
+            "node": "¿Ya notificado?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Ya notificado?1": {
+      "main": [
+        [
+          {
+            "node": "Fin: ya notificado1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Firestore GET: solicitud1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firestore GET: solicitud1": {
+      "main": [
+        [
+          {
+            "node": "Normalizar datos Firestore1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar datos Firestore1": {
+      "main": [
+        [
+          {
+            "node": "Switch: evento (2)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Confirmada y pendiente?1": {
+      "main": [
+        [
+          {
+            "node": "Switch: tipo de solicitud1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fin: no corresponde notificar1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: tipo de solicitud1": {
+      "main": [
+        [
+          {
+            "node": "Preparar mensaje: reserva1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar mensaje: pedido1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fin: tipo no soportado1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar mensaje: reserva1": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp: Evolution API1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar mensaje: pedido1": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp: Evolution API1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp: Evolution API1": {
+      "main": [
+        [
+          {
+            "node": "Switch: post-envío1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar notificacion_enviada1": {
+      "main": [
+        [
+          {
+            "node": "Firestore UPDATE: notificacion_enviada1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firestore UPDATE: notificacion_enviada1": {
+      "main": [
+        [
+          {
+            "node": "Fin: notificación enviada1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: evento1": {
+      "main": [
+        [
+          {
+            "node": "Redis GET: notified1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redis GET: rejected1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validar horario recordatorio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fin: no corresponde notificar1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis GET: rejected1": {
+      "main": [
+        [
+          {
+            "node": "¿Ya rechazado?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Ya rechazado?1": {
+      "main": [
+        [
+          {
+            "node": "Fin: ya rechazado1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Firestore GET: solicitud1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: evento (2)1": {
+      "main": [
+        [
+          {
+            "node": "¿Confirmada y pendiente?1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar mensaje: rechazo1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fin: no corresponde notificar1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar mensaje: rechazo1": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp: Evolution API1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: post-envío1": {
+      "main": [
+        [
+          {
+            "node": "Marcar notificacion_enviada1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Marcar rechazo notificado1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fin: no corresponde notificar1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar rechazo notificado1": {
+      "main": [
+        [
+          {
+            "node": "Firestore UPDATE: rechazo_notificado1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firestore UPDATE: rechazo_notificado1": {
+      "main": [
+        [
+          {
+            "node": "Fin: rechazo enviado1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis GET: reminder": {
+      "main": [
+        [
+          {
+            "node": "¿Recordatorio ya enviado?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Recordatorio ya enviado?1": {
+      "main": [
+        [
+          {
+            "node": "Fin: recordatorio ya enviado1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar mensaje: recordatorio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar mensaje: recordatorio1": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp: recordatorio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp: recordatorio1": {
+      "main": [
+        [
+          {
+            "node": "Marcar recordatorio enviado1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar recordatorio enviado1": {
+      "main": [
+        [
+          {
+            "node": "Firestore UPDATE: recordatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firestore UPDATE: recordatorio": {
+      "main": [
+        [
+          {
+            "node": "Fin: recordatorio enviado1",
             "type": "main",
             "index": 0
           }
@@ -1757,13 +1758,13 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "1372729b-3dac-4c30-aba2-2331e85def0a",
+  "versionId": "362d116f-d24e-43fe-aeaf-de1767726a0c",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "f97f52e2629a44e549822a08608d3090a447ae09f8015d4d4f61024c5aa4446c"

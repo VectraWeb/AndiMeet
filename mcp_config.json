@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "openclaw-local": {
+      "command": "/home/ariel/openclaw-workspace/openclaw-env/bin/openclaw",
+      "args": ["mcp"],
+      "env": {
+        "OLLAMA_API_BASE": "http://127.0.0.1:11434"
+      }
+    }
+  }
+}

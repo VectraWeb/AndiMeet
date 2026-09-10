@@ -88,6 +88,7 @@ export default function ResForm({ onStaffAccess, onBack }) {
         id,
         customerName: form.customerName.trim(),
         phone: form.phone.trim(),
+        customerPhone: form.phone.trim(),
         partySize: form.partySize,
         staffId: null,
         staffName: '',

@@ -28,7 +28,7 @@ import {
   C, LIVE_STATES, SERVICES,
   t2m, genSlots, buildTables, todayISO,
   detectService, computeStateDurations,
-  getAssignedTables, notificarN8N, remindAtISO,
+  getAssignedTables, notificarN8N,
 } from '../utils';
 
 // ─── Firestore helpers ───────────────────────────────────────────────────────
@@ -248,20 +248,6 @@ export default function StaffDashboard({ onLogout }) {
         document_id: id,
         tipo: 'reserva',
       });
-      // Programa el recordatorio de 15 min: n8n duerme hasta `remind_at`
-      // (sin polling) y al despertar verifica el estado antes de avisar.
-      // Solo si quedó confirmada (con mesa); si ya pasó la hora, no se programa.
-      if (cleanData.tableId && cleanData.time) {
-        const remind_at = remindAtISO(date, cleanData.time, cleanData.service);
-        if (remind_at && Date.parse(remind_at) > Date.now()) {
-          notificarN8N({
-            evento: 'recordatorio_programar',
-            document_id: id,
-            tipo: 'reserva',
-            remind_at,
-          });
-        }
-      }
   }, [date, tableNumByTable, groupNumByTable]);
 
   const deleteRes = useCallback(async (resData) => {

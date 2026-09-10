@@ -106,7 +106,8 @@ export default function ResForm({ onStaffAccess, onBack }) {
       notificarN8N({
         evento: 'recordatorio_programar',
         document_id: id,
-        tipo: 'reserva'
+        tipo: 'reserva',
+        remind_at: new Date(new Date(`${date}T${form.time}:00`).getTime() - 15 * 60000).toISOString()
       });
 
       setSuccess(true);

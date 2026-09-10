@@ -1654,7 +1654,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer ={{ $('Firebase Auth Token').item.json.idToken }}"
+              "value": "=Bearer {{ $('Firebase Auth Token').item.json.idToken }}"
             }
           ]
         },
@@ -1698,7 +1698,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer ={{ $('Firebase Auth Token').item.json.idToken }}"
+              "value": "=Bearer {{ $('Firebase Auth Token').item.json.idToken }}"
             }
           ]
         },
@@ -1732,7 +1732,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer ={{ $('Firebase Auth Token').item.json.idToken }}"
+              "value": "=Bearer {{ $('Firebase Auth Token').item.json.idToken }}"
             }
           ]
         },

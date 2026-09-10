@@ -8,13 +8,21 @@ export function useStaff() {
   const [staff, setStaff] = useState([]);
 
   useEffect(() => {
-    let unsub;
+    let cancelled = false;
+    let unsub = null;
+
     authReady.then(() => {
+      if (cancelled) return;
       unsub = onSnapshot(staffCol(), (snap) => {
+        if (cancelled) return;
         setStaff(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       });
     });
-    return () => { if (unsub) unsub(); };
+
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, []);
 
   return staff;

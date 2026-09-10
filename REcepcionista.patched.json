@@ -2214,6 +2214,33 @@
         3100,
         300
       ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-n8n.u2ucpt.easypanel.host/webhook/whatsapp/notificar-confirmado",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-andi-secret",
+              "value": "andi-webhook-secret-2026"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ evento: 'recordatorio_programar', document_id: $json.reservation_id, tipo: 'reserva', remind_at: new Date(new Date($json.flat_doc.date + 'T' + $json.flat_doc.time + ':00-03:00').getTime() - 15 * 60000).toISOString() }) }}",
+        "options": {}
+      },
+      "id": "schedule-reminder-node-123",
+      "name": "Schedule Reminder via NotiMan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -76184,
+        -2768
+      ]
     }
   ],
   "pinData": {},
@@ -2614,7 +2641,7 @@
       "main": [
         [
           {
-            "node": "Has Table?",
+            "node": "Schedule Reminder via NotiMan",
             "type": "main",
             "index": 0
           }
@@ -3070,6 +3097,17 @@
         [
           {
             "node": "Send Cancel Pedido WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Reminder via NotiMan": {
+      "main": [
+        [
+          {
+            "node": "Has Table?",
             "type": "main",
             "index": 0
           }

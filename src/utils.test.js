@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { t2m, m2t, genSlots, buildTables, todayISO, detectService, SERVICES, DEFAULT_CONFIG, timeBelongsToService, serviceFromTime } from './utils.js';
+import { t2m, m2t, genSlots, buildTables, todayISO, getBusinessDate, calculateReminderAt, detectService, SERVICES, DEFAULT_CONFIG, timeBelongsToService, serviceFromTime } from './utils.js';
 
 describe('t2m (time to minutes)', () => {
   it('converts normal time correctly', () => {
@@ -84,6 +84,48 @@ describe('todayISO', () => {
   it('returns local date in YYYY-MM-DD format', () => {
     const result = todayISO();
     expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('getBusinessDate', () => {
+  it('devuelve la fecha actual durante el mediodía', () => {
+    const noon = new Date('2026-09-10T13:00:00');
+    expect(getBusinessDate('mediodia', noon)).toBe('2026-09-10');
+  });
+
+  it('devuelve la fecha actual durante la cena antes de medianoche', () => {
+    const dinner = new Date('2026-09-10T21:30:00');
+    expect(getBusinessDate('cena', dinner)).toBe('2026-09-10');
+  });
+
+  it('devuelve la fecha de ayer durante la cena después de medianoche (00:00 a 04:59)', () => {
+    const overnight = new Date('2026-09-11T00:30:00');
+    expect(getBusinessDate('cena', overnight)).toBe('2026-09-10');
+    const late = new Date('2026-09-11T03:15:00');
+    expect(getBusinessDate('cena', late)).toBe('2026-09-10');
+  });
+
+  it('devuelve la fecha actual si ya pasaron las 05:00', () => {
+    const morning = new Date('2026-09-11T06:00:00');
+    expect(getBusinessDate('cena', morning)).toBe('2026-09-11');
+  });
+});
+
+describe('calculateReminderAt', () => {
+  it('calcula recordatorio 15 min antes en horario regular', () => {
+    const res = calculateReminderAt('2026-09-10', '20:00', 'cena');
+    expect(res).toBe(new Date('2026-09-10T19:45:00').toISOString());
+  });
+
+  it('calcula recordatorio post-medianoche en la fecha civil correcta (+1 día)', () => {
+    // Si la reserva de cena es para 00:30 del viernes 10 (trasnoche), es la madrugada del sábado 11 a las 00:15
+    const res = calculateReminderAt('2026-09-10', '00:30', 'cena');
+    expect(res).toBe(new Date('2026-09-11T00:15:00').toISOString());
+  });
+
+  it('retorna null ante inputs inválidos', () => {
+    expect(calculateReminderAt('', '20:00', 'cena')).toBeNull();
+    expect(calculateReminderAt('2026-09-10', '', 'cena')).toBeNull();
   });
 });
 

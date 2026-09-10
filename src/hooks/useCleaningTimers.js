@@ -78,19 +78,23 @@ export function useCleaningTimers(reservations, date, tables) {
   const timersRef = useRef({});
   // Solamente expiración por mesa: estable entre inicio/fin/extensión
   const [sharedTimers, setSharedTimers] = useState({});
-  const finalizingRef = useRef(false);
+  const finalizingIdsRef = useRef(new Set());
   const doFinalizeRef = useRef(null);
 
   const doFinalize = useCallback(async (res) => {
-    if (finalizingRef.current) return;
-    finalizingRef.current = true;
+    if (finalizingIdsRef.current.has(res.id)) return;
+    finalizingIdsRef.current.add(res.id);
 
     const tableName = tables.find(t => t.id === res.tableId)?.name || res.tableId;
-    const startTs = toMs(res.startedAt || res.createdAt);
-    const duracionMinutos = Math.round((Date.now() - startTs) / 60000);
+    const startTs = res.startedAt
+      ? toMs(res.startedAt)
+      : (res.cleaningStartedAt ? toMs(res.cleaningStartedAt) - 60 * 60000 : Date.now());
+    const duracionMinutos = Math.max(0, Math.round((Date.now() - startTs) / 60000));
 
     notificarN8N({
       evento: 'reserva_finalizada',
+      document_id: res.id,
+      tipo: 'reserva',
       cliente_nombre: res.customerName,
       mesa: tableName,
       mesa_id: res.tableId,
@@ -117,7 +121,7 @@ export function useCleaningTimers(reservations, date, tables) {
     } catch (e) {
       console.warn('[CleaningTimer] Error al finalizar:', e);
     } finally {
-      finalizingRef.current = false;
+      finalizingIdsRef.current.delete(res.id);
     }
   }, [date, tables]);
 
@@ -204,7 +208,20 @@ export function useCleaningTimers(reservations, date, tables) {
       r => r.liveState === 'para_limpiar' && r.cleaningStartedAt && !r.cleaningCompletedAt
     );
     for (const res of cleaning) {
-      if (!timersRef.current[res.id]) startTimer(res);
+      const existing = timersRef.current[res.id];
+      if (!existing) {
+        startTimer(res);
+      } else {
+        // Si otro dispositivo extendió el tiempo (+5 min), sincronizar expiración local
+        const expectedExpires = toMs(res.cleaningStartedAt) + CLEANING_DURATION_MS;
+        if (Math.abs(existing.expiresAt - expectedExpires) > 2000 && expectedExpires > Date.now()) {
+          existing.expiresAt = expectedExpires;
+          setSharedTimers(prev => ({
+            ...prev,
+            [res.tableId]: { expiresAt: expectedExpires, resId: res.id },
+          }));
+        }
+      }
     }
 
     const activeIds = new Set(cleaning.map(r => r.id));

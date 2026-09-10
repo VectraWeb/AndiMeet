@@ -29,6 +29,7 @@ import {
   t2m, genSlots, buildTables, todayISO,
   detectService, computeStateDurations,
   getAssignedTables, notificarN8N,
+  getBusinessDate, calculateReminderAt,
 } from '../utils';
 
 // ─── Firestore helpers ───────────────────────────────────────────────────────
@@ -44,8 +45,8 @@ const FREE_TABLE_STATUS = { status: 'free' };
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function StaffDashboard({ onLogout }) {
   const [loading, setLoading] = useState(true);
-  const [date, setDate] = useState(todayISO);
   const [service, setService] = useState(detectService);
+  const [date, setDate] = useState(() => getBusinessDate(detectService()));
 
   // Modales
   const [showModal, setShowModal] = useState(false);
@@ -218,7 +219,7 @@ export default function StaffDashboard({ onLogout }) {
         const mesaSnap = await transaction.get(mesaRef);
 
         if (_prevResId) {
-          transaction.delete(resDocRef(_prevResId));
+          // Preservamos el documento de la reserva anterior en reservations para mantener su historial y métricas
           if (_prevMesaRef) transaction.delete(_prevMesaRef);
         }
 
@@ -243,10 +244,13 @@ export default function StaffDashboard({ onLogout }) {
         });
       });
 
+      const remindAt = calculateReminderAt(date, cleanData.time, cleanData.service);
+
       notificarN8N({
         evento: 'solicitud_confirmada',
         document_id: id,
         tipo: 'reserva',
+        ...(remindAt ? { remind_at: remindAt } : {}),
       });
   }, [date, tableNumByTable, groupNumByTable]);
 
@@ -260,7 +264,7 @@ export default function StaffDashboard({ onLogout }) {
         if (resData.tableId && resData.service) {
           const mesaRef = mesaReservadaRef(resData.tableId, date, resData.service);
           const mesaSnap = await transaction.get(mesaRef);
-          if (mesaSnap.exists && mesaSnap.data().reservationId === resData.id) {
+          if (mesaSnap.exists() && mesaSnap.data().reservationId === resData.id) {
             transaction.delete(mesaRef);
           }
         }
@@ -277,7 +281,7 @@ export default function StaffDashboard({ onLogout }) {
         if (resData.tableId && resData.service) {
           const mesaRef = mesaReservadaRef(resData.tableId, date, resData.service);
           const mesaSnap = await transaction.get(mesaRef);
-          if (mesaSnap.exists && mesaSnap.data().reservationId === resData.id) {
+          if (mesaSnap.exists() && mesaSnap.data().reservationId === resData.id) {
             transaction.delete(mesaRef);
           }
         }
@@ -308,7 +312,14 @@ export default function StaffDashboard({ onLogout }) {
       stateLog: arrayUnion({ state: liveState, at: new Date().toISOString() }),
       updatedAt: serverTimestamp(),
     };
-    if (liveState === 'esperando_cliente' && !res.startedAt) patch.startedAt = serverTimestamp();
+    // Cualquier estado activo registra el inicio de ocupación si aún no estaba registrado
+    const ACTIVE_DINING = new Set([
+      'esperando_cliente', 'comiendo_entrada', 'plato_principal',
+      'en_postre_cafe', 'sobremesa', 'esperando_cuenta',
+    ]);
+    if (ACTIVE_DINING.has(liveState) && !res.startedAt) {
+      patch.startedAt = serverTimestamp();
+    }
     if (liveState === 'para_limpiar') {
       patch.leftAt = serverTimestamp();
       patch.cleaningStartedAt = new Date().toISOString();
@@ -332,7 +343,14 @@ export default function StaffDashboard({ onLogout }) {
       if (res.tableId && res.service) {
         await deleteDoc(mesaReservadaRef(res.tableId, date, res.service)).catch(() => {});
       }
-      await deleteDoc(resDocRef(res.id));
+      // Desasigna la mesa física y limpia el estado sin eliminar la reserva de la base de datos
+      await updateDoc(resDocRef(res.id), {
+        mesa_id: null,
+        mesa: null,
+        liveState: null,
+        estado: 'pendiente',
+        updatedAt: serverTimestamp(),
+      });
       setOptimisticStates(prev => { const n = { ...prev }; delete n[res.id]; return n; });
     } catch (e) {
       console.warn('[Andi] Fallo al limpiar mesa, revirtiendo...', e);

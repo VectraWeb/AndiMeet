@@ -25,9 +25,13 @@ export function useSalonLayout() {
   useEffect(() => { groupsRef.current = groups; }, [groups]);
 
   useEffect(() => {
-    let unsub;
+    let cancelled = false;
+    let unsub = null;
+
     authReady.then(() => {
+      if (cancelled) return;
       unsub = onSnapshot(layoutRef(), (snap) => {
+        if (cancelled) return;
         if (snap.exists()) {
           const data = snap.data();
           if (data.positions) setPositions(data.positions);
@@ -38,7 +42,11 @@ export function useSalonLayout() {
         }
       });
     });
-    return () => { if (unsub) unsub(); };
+
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, []);
 
   const saveLayout = useCallback(async (pos, grp) => {

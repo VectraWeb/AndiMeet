@@ -10,9 +10,13 @@ export function useConfig() {
   const [sectors, setSectors] = useState([]);
 
   useEffect(() => {
-    let unsub;
+    let cancelled = false;
+    let unsub = null;
+
     authReady.then(() => {
+      if (cancelled) return;
       unsub = onSnapshot(cfgRef(), (snap) => {
+        if (cancelled) return;
         if (snap.exists()) {
           const data = snap.data();
           if (data.mesaTipos) {
@@ -24,7 +28,11 @@ export function useConfig() {
         }
       });
     });
-    return () => { if (unsub) unsub(); };
+
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, []);
 
   const saveSectors = async (updatedSectors) => {

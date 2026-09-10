@@ -5,7 +5,7 @@ import {
   doc, setDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { db, authReady } from '../firebase';
-import { C, SERVICES, serviceFromTime, defaultServiceTime, todayISO, notificarN8N } from '../utils';
+import { C, SERVICES, serviceFromTime, defaultServiceTime, todayISO, notificarN8N, calculateReminderAt } from '../utils';
 import { Field } from './ui';
 import PhoneField from './PhoneField';
 
@@ -29,6 +29,7 @@ export default function ResForm({ onStaffAccess, onBack }) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   // ── Triple clic en logo → acceso staff ──────────────────────────────────
   const clickCount = useRef(0);
@@ -74,7 +75,8 @@ export default function ResForm({ onStaffAccess, onBack }) {
 
   // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!valid) return;
+    if (!valid || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setError('');
 
@@ -103,12 +105,15 @@ export default function ResForm({ onStaffAccess, onBack }) {
         createdAt: serverTimestamp(),
       });
 
-      notificarN8N({
-        evento: 'recordatorio_programar',
-        document_id: id,
-        tipo: 'reserva',
-        remind_at: new Date(new Date(`${date}T${form.time}:00`).getTime() - 15 * 60000).toISOString()
-      });
+      const remindAt = calculateReminderAt(date, form.time, service);
+      if (remindAt) {
+        notificarN8N({
+          evento: 'recordatorio_programar',
+          document_id: id,
+          tipo: 'reserva',
+          remind_at: remindAt,
+        });
+      }
 
       setSuccess(true);
       setTimeout(() => {
@@ -119,6 +124,7 @@ export default function ResForm({ onStaffAccess, onBack }) {
       console.error('Error al crear la reserva:', e);
       setError('Error al crear la reserva. Intente de nuevo.');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

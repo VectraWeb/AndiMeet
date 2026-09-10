@@ -20,11 +20,15 @@ export function useReservations(date) {
 
   useEffect(() => {
     const q = query(resCol(), where('date', '==', date));
-    let unsub;
+    let cancelled = false;
+    let unsub = null;
+
     authReady.then(() => {
+      if (cancelled) return;
       unsub = onSnapshot(
         q,
         (snap) => {
+          if (cancelled) return;
           const data = snap.docs
             .map(d => ({ ...d.data(), id: d.id, service: normService(d.data().service) }))
             .filter(r => r.source !== 'whatsapp_bot')
@@ -34,7 +38,11 @@ export function useReservations(date) {
         (err) => { console.error('[Andi] Firestore error:', err); }
       );
     });
-    return () => { if (unsub) unsub(); };
+
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, [date]);
 
   return reservations;

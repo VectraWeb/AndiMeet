@@ -132,6 +132,40 @@ export const todayISO = () => {
 export const toLocalISO = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+// Retorna la fecha comercial del restaurante. Durante la cena (19:30 a 01:00),
+// si la hora actual es post-medianoche (00:00 a 04:59), corresponde al turno
+// noche que comenzó el día civil anterior.
+export const getBusinessDate = (svc = detectService(), now = new Date()) => {
+  const d = new Date(now);
+  const h = d.getHours();
+  if (svc === 'cena' && h < 5) {
+    d.setDate(d.getDate() - 1);
+  }
+  return toLocalISO(d);
+};
+
+// Calcula el timestamp ISO para el recordatorio (15 min antes).
+// Maneja adecuadamente el cruce de medianoche en el turno noche (ej. cena a las 00:30).
+export const calculateReminderAt = (dateStr, timeStr, service) => {
+  if (!dateStr || !timeStr) return null;
+  const [h, m] = timeStr.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+
+  const [y, mon, day] = dateStr.split('-').map(Number);
+  if (!y || !mon || !day) return null;
+
+  const targetDate = new Date(y, mon - 1, day);
+  // Si la reserva es de cena y el horario es menor a 12 (00:00 - 01:00),
+  // pertenece a la madrugada del día siguiente a la fecha comercial elegida.
+  if (service === 'cena' && h < 12) {
+    targetDate.setDate(targetDate.getDate() + 1);
+  }
+  targetDate.setHours(h, m, 0, 0);
+
+  const remindTime = targetDate.getTime() - 15 * 60 * 1000;
+  return new Date(remindTime).toISOString();
+};
+
 export const formatDate = (iso) => {
   const d = new Date(iso + 'T12:00:00');
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 480;

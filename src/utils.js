@@ -239,6 +239,22 @@ export const notificarN8N = async (datos) => {
   console.error('[Andi] n8n no alcanzado tras reintentos:', datos, lastErr);
 };
 
+// Calcula el ISO UTC del recordatorio: fecha+hora de la reserva menos N minutos.
+// Convención Andi: `date` es el día de servicio; en cena pasada la medianoche
+// (ej 00:30) el `date` es el día en que EMPEZÓ el servicio, así que cae al día
+// siguiente del calendario. Offset -03:00 explícito (Argentina, sin DST).
+export const remindAtISO = (dateStr, timeStr, service, minsBefore = 15) => {
+  if (!dateStr || !timeStr) return '';
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(timeStr).trim());
+  if (!m) return '';
+  const hhmm = `${m[1].padStart(2, '0')}:${m[2]}`;
+  const base = new Date(`${dateStr}T${hhmm}:00-03:00`);
+  if (Number.isNaN(base.getTime())) return '';
+  let ts = base.getTime();
+  if (service === 'cena' && Number(m[1]) < 12) ts += 24 * 3600 * 1000;
+  return new Date(ts - minsBefore * 60 * 1000).toISOString();
+};
+
 // ─── Calcula duración (min) de cada estado desde stateLog ─────────────────
 export const computeStateDurations = (stateLog) => {
   if (!stateLog || stateLog.length < 2) return [];

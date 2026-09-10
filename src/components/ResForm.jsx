@@ -5,7 +5,7 @@ import {
   doc, setDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { db, authReady } from '../firebase';
-import { C, SERVICES, serviceFromTime, defaultServiceTime, todayISO } from '../utils';
+import { C, SERVICES, serviceFromTime, defaultServiceTime, todayISO, notificarN8N } from '../utils';
 import { Field } from './ui';
 import PhoneField from './PhoneField';
 
@@ -101,6 +101,12 @@ export default function ResForm({ onStaffAccess, onBack }) {
         date,
         updatedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
+      });
+
+      notificarN8N({
+        evento: 'recordatorio_programar',
+        document_id: id,
+        tipo: 'reserva'
       });
 
       setSuccess(true);

@@ -263,7 +263,7 @@ const raw = allRaw.map(i => i.json);`
         const aiAgent = nodes.find(n => n.name === 'AI Agent');
         const marker = 'Usá SIEMPRE esta fecha como referencia';
         if (aiAgent && aiAgent.parameters.options.systemMessage.indexOf(marker) === -1) {
-            const dateLine = `Hoy es {{ new Date().toLocaleDateString('es', { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) }} (Argentina). ${marker} para calcular "hoy", "mañana" y los días de semana en datos_reserva.fecha. `;
+            const dateLine = `Hoy es {{ new Date().toLocaleDateString('es', { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) }} (Argentina). ${marker} para calcular "hoy", "mañana" y los días de semana. REGLA CRÍTICA: cuando crear_reserva=true, datos_reserva.fecha es OBLIGATORIO en formato YYYY-MM-DD (resolvelo con esta fecha y el historial, aunque el cliente lo haya dicho en un mensaje anterior); nunca lo dejes vacío. `;
             const sm = aiAgent.parameters.options.systemMessage;
             aiAgent.parameters.options.systemMessage = sm.charAt(0) === '=' ? '=' + dateLine + sm.slice(1) : dateLine + sm;
             console.log('Injected current-date reference into AI Agent prompt.');
@@ -290,6 +290,21 @@ const raw = allRaw.map(i => i.json);`
             delete gmail.parameters.authentication;
             gmail.credentials = { gmailOAuth2: { id: 'zG0DwN37ND3vuVmt', name: 'Gmail account' } };
             console.log('Pointed Gmail node to OAuth2 credential.');
+        }
+    }
+
+    // 9. Ensure datos_reserva.fecha exists in output schema (idempotent).
+    // Sin esta propiedad el modelo no puede emitir la fecha y el parser cae a "hoy".
+    {
+        const parser = nodes.find(n => n.name === 'Structured Output Parser');
+        if (parser && typeof parser.parameters.inputSchema === 'string' && parser.parameters.inputSchema.charAt(0) === '=') {
+            const schema = JSON.parse(parser.parameters.inputSchema.substring(1));
+            const dr = schema.properties && schema.properties.datos_reserva;
+            if (dr && dr.properties && !dr.properties.fecha) {
+                dr.properties.fecha = { type: 'string', description: 'Fecha de la reserva en formato YYYY-MM-DD. OBLIGATORIA cuando crear_reserva=true: resolvela usando la fecha de hoy y el historial de la conversacion (manana=hoy+1, pasado manana=hoy+2, dia de semana=proximo). Nunca vacia si hay reserva.' };
+                parser.parameters.inputSchema = '=' + JSON.stringify(schema, null, 2);
+                console.log('Added fecha to datos_reserva schema.');
+            }
         }
     }
     

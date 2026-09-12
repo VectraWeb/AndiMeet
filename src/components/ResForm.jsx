@@ -115,6 +115,17 @@ export default function ResForm({ onStaffAccess, onBack }) {
         });
       }
 
+      notificarN8N({
+        evento: 'reserva_creada',
+        document_id: id,
+        tipo: 'reserva',
+        phone: form.phone.trim(),
+        name: form.customerName.trim(),
+        date,
+        time: form.time,
+        partySize: String(form.partySize),
+      });
+
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);

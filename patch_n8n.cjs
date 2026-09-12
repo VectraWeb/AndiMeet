@@ -105,6 +105,13 @@ function main() {
         return newNode;
     }
     
+    // Guard: si la base ya trae los nodos generados (exportada desde n8n),
+    // no duplicar (IDs fijos y conexiones se romperían).
+    const alreadyGenerated = nodes.some(nn => nn.name === 'Parse Cancelar Pedido');
+    if (alreadyGenerated) {
+        console.log('Base already contains generated pedido nodes; skipping sections 4-5.');
+    }
+    if (!alreadyGenerated) {
     try {
         const parsePedido = duplicateNode("Parse Cancelación", "Parse Cancelar Pedido", 300);
         const getPedidos = duplicateNode("Get Reservas Para Cancelar", "Get Pedidos Para Cancelar", 300);
@@ -248,6 +255,42 @@ const raw = allRaw.map(i => i.json);`
 
     } catch (e) {
         console.error("Error creating nodes: ", e);
+    }
+    } // end if (!alreadyGenerated)
+
+    // 6. Inject real current date into AI Agent prompt (idempotent).
+    {
+        const aiAgent = nodes.find(n => n.name === 'AI Agent');
+        const marker = 'Usá SIEMPRE esta fecha como referencia';
+        if (aiAgent && aiAgent.parameters.options.systemMessage.indexOf(marker) === -1) {
+            const dateLine = `Hoy es {{ new Date().toLocaleDateString('es', { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) }} (Argentina). ${marker} para calcular "hoy", "mañana" y los días de semana en datos_reserva.fecha. `;
+            const sm = aiAgent.parameters.options.systemMessage;
+            aiAgent.parameters.options.systemMessage = sm.charAt(0) === '=' ? '=' + dateLine + sm.slice(1) : dateLine + sm;
+            console.log('Injected current-date reference into AI Agent prompt.');
+        }
+    }
+
+    // 7. Normalize malformed Bearer headers '=Bearer ={{' (idempotent).
+    for (const n of nodes) {
+        const hp = n.parameters && n.parameters.headerParameters && n.parameters.headerParameters.parameters;
+        if (Array.isArray(hp)) {
+            for (const h of hp) {
+                if (typeof h.value === 'string' && h.value.indexOf('=Bearer ={{') !== -1) {
+                    h.value = h.value.split('=Bearer ={{').join('=Bearer {{');
+                    console.log('Fixed Bearer header in node: ' + n.name);
+                }
+            }
+        }
+    }
+
+    // 8. Keep Gmail alert node on OAuth2 (idempotent; serviceAccount can never send).
+    {
+        const gmail = nodes.find(n => n.name === 'Send a message');
+        if (gmail && (!gmail.credentials || !gmail.credentials.gmailOAuth2)) {
+            delete gmail.parameters.authentication;
+            gmail.credentials = { gmailOAuth2: { id: 'zG0DwN37ND3vuVmt', name: 'Gmail account' } };
+            console.log('Pointed Gmail node to OAuth2 credential.');
+        }
     }
     
     fs.writeFileSync(outputPath, JSON.stringify(workflow, null, 2), 'utf8');

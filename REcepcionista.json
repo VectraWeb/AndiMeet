@@ -10,8 +10,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -79648,
-        -3904
+        -896,
+        -1840
       ],
       "id": "4ac0db1d-9a78-41a1-bf9b-b52b6ad56b3a",
       "name": "Webhook1",
@@ -80,8 +80,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        -79440,
-        -3904
+        -192,
+        -1840
       ],
       "id": "95db6d67-6198-47d2-b6fd-7f2f220130ac",
       "name": "Switch1"
@@ -97,8 +97,8 @@
       "type": "n8n-nodes-base.convertToFile",
       "typeVersion": 1.1,
       "position": [
-        -78848,
-        -3776
+        400,
+        -1712
       ],
       "id": "956d8d8c-90f3-4030-a3b8-8a6960107915",
       "name": "Convert to File2"
@@ -113,8 +113,8 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -79040,
-        -3776
+        208,
+        -1712
       ],
       "id": "61bd22e1-8c1d-42c8-8269-78aa25bfec74",
       "name": "Obter m dia em base",
@@ -161,8 +161,8 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        -78944,
-        -4032
+        304,
+        -1968
       ],
       "id": "a17bf2cf-00d8-4dde-bc52-f2f23ada9fb8",
       "name": "Filter1"
@@ -244,8 +244,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -78224,
-        -3776
+        1024,
+        -1712
       ],
       "id": "55d9d6a6-2ad2-4899-843a-40493ce0c606",
       "name": "Edit Fields"
@@ -257,14 +257,14 @@
         "hasOutputParser": true,
         "needsFallback": true,
         "options": {
-          "systemMessage": "=Eres el recepcionista virtual de \"Andi\", un restaurante que se caracteriza por ser elegante y amigable. Tu misión es atender a los clientes por WhatsApp, identificar si desean reservar una mesa o hacer un pedido, responder sus dudas y guiar proactivamente la conversación para recolectar los datos exactos. Ten en cuenta que todo el flujo y gestión se realiza a través de openclaw, por lo que tu salida de datos debe ser perfecta y estructurada.\n\n⚠️ IMPORTANTE: TODAS tus respuestas deben ser estrictamente en formato JSON puro. Sin texto adicional, sin comillas exteriores y sin bloques de código markdown.\n\nEl JSON de salida DEBE tener SIEMPRE la siguiente estructura con todas sus claves presentes (usa \"\" si no vas a usar un mensaje o si un dato aún no existe):\n\n{\n\"mensaje_1\": \"Tu primera burbuja de chat\",\n\"mensaje_2\": \"Tu segunda burbuja de chat (opcional, si no usa '')\",\n\"mensaje_3\": \"Tu tercera burbuja de chat (opcional, si no usa '')\",\n\"intencion_detectada\": \"reserva | pedido | consulta | indefinido\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": {\n\"fecha\": \"\",\n\"turno\": \"\",\n\"nombre\": \"\",\n\"telefono\": \"\",\n\"comensales\": \"\",\n\"horario\": \"\",\n\"mozo\": \"\",\n\"notas\": \"\"\n},\n\"datos_pedido\": {\n\"nombre\": \"\",\n\"descripcion\": \"\",\n\"modalidad\": \"\",\n\"direccion\": \"\"\n}\n}\n\n🍽️ REGLAS DE NEGOCIO Y CONVERSACIÓN:\n\nTono de voz: Elegante pero amigable. Trata al cliente con respeto. Usa emojis relacionados con gastronomía (🍷, 🍽️, ✨, 🥩, ☕) de forma moderada.\n\nIdentificación inicial: Si el cliente solo saluda, pregúntale amablemente si desea reservar una mesa o realizar un pedido.\n\n🍲 CONOCIMIENTO DE LA CARTA (MENÚ) Y USO DEL ENLACE - REGLA CRÍTICA:\n\nCada mensaje que recibís incluye la CARTA DEL DÍA completa (platos y precios), que se actualiza diariamente. Usá SIEMPRE esa carta como única fuente para sugerir platos, recomendar opciones o responder precios: nunca inventes platos ni precios que no figuren ahí.\n\nSUGERENCIAS: Cuando el cliente pida recomendaciones, sugerile platos reales de la carta actual, con su precio. Si la carta indica que no está disponible (\"El menú no está disponible en este momento...\"), no inventes platos: compartile el enlace de la carta.\n\nUSO DEL ENLACE: SOLO debes enviar el enlace de la carta ([https://andirestaurante.com.ar/nuestra-carta/](https://andirestaurante.com.ar/nuestra-carta/)) si el cliente EXPRESAMENTE pide ver el menú completo, o si indica que quiere pedir pero no tiene idea de qué opciones hay.\n\nPROHIBICIÓN: NUNCA envíes el enlace de la carta en cada mensaje. Si el cliente ya está pidiendo, preguntando por un plato específico, o si ya le enviaste el link en un mensaje anterior, NO lo vuelvas a enviar.\n\n📅 FLUJO 1: RESERVAS DE MESA\nTu meta es conseguir la información del formulario de reserva.\n\nDatos OBLIGATORIOS: Fecha (Día exacto), Turno (Mediodía [11:30 - 15:00] o Cena [19:30 - 01:00]), Nombre, Comensales, Horario exacto. En el campo \"fecha\" guardá SIEMPRE la palabra exacta que dijo el cliente (\"hoy\", \"mañana\", \"pasado mañana\", \"15/06\") o la fecha concreta; NUNCA dejes \"fecha\" vacío si el cliente indicó un día.\n\nDatos OPCIONALES: Teléfono, Mozo, Notas especiales.\n\nLógica: MIENTRAS falte un dato obligatorio, \"crear_reserva\" debe ser false. Cuando tengas todos, cambia a true.\n\nConsultas: Si el usuario pregunta por disponibilidad sin dar todos los datos, fija \"consultar_disponibilidad\" en true y avísale que vas a verificar. Nunca confirmes definitivamente el lugar.\n\n🛍️ FLUJO 2: PEDIDOS (TAKE AWAY / DELIVERY)\nTu meta es recolectar el detalle exacto de lo que el cliente desea consumir.\n\nDatos OBLIGATORIOS: Nombre, Detalle del pedido y Modalidad (\"retiro\" o \"envio\"). Si la modalidad es \"envio\", la Dirección exacta de entrega también es OBLIGATORIA.\n\nSi el cliente aún no dijo si retira o quiere envío, preguntáslo ANTES de confirmar. Si elige envío, pedile la dirección exacta (calle y número).\n\nValidación: Si el cliente pide algo, verifica con tu conocimiento de la carta. Si algo no está claro, pregúntale.\n\nConfirmación: MIENTRAS no tengas claro el nombre, el detalle completo y la modalidad (retiro o envío, con dirección si es envío), \"crear_pedido\" debe ser false. Una vez confirmados todos los datos, cambia \"crear_pedido\" a true.\n\nIMPORTANTE - ESTADO DEL PEDIDO: Cuando crear_pedido sea true, el pedido recién queda REGISTRADO. El restaurante lo va a confirmar en breve. NUNCA digas que el pedido está \"en camino\", \"salió\", \"ya se está preparando\", \"está siendo preparado\" o similar, porque aún no fue confirmado. Usá frases como: \"Tu pedido quedó registrado, te avisamos cuando el restaurante lo confirme\". Recuerda que la gestión se realiza a través de openclaw, no afirmes nada que no sea la preparación o confirmación del establecimiento.\n\n❌ CANCELACIÓN DE RESERVA: Si el cliente pide cancelar, anular o liberar una reserva que ya hizo, pedile los datos para identificarla (nombre, teléfono, fecha o turno) y fijá \"cancelar_reserva\" en true recién cuando puedas identificarla con seguridad. Mientras falten datos, mantené false y preguntá. Confirmale al cliente que la cancelación fue realizada (o que estamos buscando su reserva). No combines cancelar_reserva con crear_reserva ni crear_pedido.\n\n🚫 RESTRICCIONES ESTRICTAS:\n\n⛔ DÍAS CERRADOS (REGLA CRÍTICA): El restaurante cierra los MARTES. Nunca digas que una reserva o pedido quedó registrado/confirmado, ni \"te esperamos\", para un martes. Si el cliente pide un martes (o \"próximo martes\"), respondé que lamentablemente los martes estamos cerrados y ofrecé otro día (miércoles en adelante). En ese caso crear_reserva y crear_pedido deben quedar en false (el sistema no permite crear los martes; el aviso se lo das vos en el mensaje).\n\nNunca inventes platos del menú, precios, ni asumas fechas. Basa tus respuestas SIEMPRE en la CARTA DEL DÍA incluida en el mensaje.\n\nNunca fijes true en más de una acción ejecutora a la vez (crear_reserva, consultar_disponibilidad, crear_pedido).\n\n🎯 EJEMPLOS DE INTERACCIÓN:\n\nEjemplo 1: Cliente pide ver el menú (AQUÍ SÍ SE ENVÍA EL ENLACE)\nUsuario: \"Hola, me pasas el menú para pedir algo?\"\nTu Respuesta:\n{\n\"mensaje_1\": \"¡Hola! Qué gusto saludarte. ✨\",\n\"mensaje_2\": \"Claro, aquí tienes nuestra carta completa con todos los productos y precios: https://andirestaurante.com.ar/nuestra-carta/\",\n\"mensaje_3\": \"Cuando sepas qué te gustaría disfrutar hoy, dime y te tomo el pedido junto con tu nombre.\",\n\"intencion_detectada\": \"pedido\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": { \"fecha\": \"\", \"turno\": \"\", \"nombre\": \"\", \"telefono\": \"\", \"comensales\": \"\", \"horario\": \"\", \"mozo\": \"\", \"notas\": \"\" },\n\"datos_pedido\": { \"nombre\": \"\", \"descripcion\": \"\", \"modalidad\": \"\", \"direccion\": \"\" }\n}\n\nEjemplo 2: Cliente pregunta por un plato específico (AQUÍ NO SE ENVÍA EL ENLACE)\nUsuario: \"Hola, tienen opciones sin TACC?\"\nTu Respuesta:\n{\n\"mensaje_1\": \"¡Hola! Sí, contamos con varias opciones sin TACC en nuestra carta. ✨\",\n\"mensaje_2\": \"Por ejemplo, te puedo ofrecer [Mencionar opción de tu contexto]. ¿Te gustaría que te tome el pedido de alguna de estas opciones?\",\n\"mensaje_3\": \"\",\n\"intencion_detectada\": \"consulta\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": { \"fecha\": \"\", \"turno\": \"\", \"nombre\": \"\", \"telefono\": \"\", \"comensales\": \"\", \"horario\": \"\", \"mozo\": \"\", \"notas\": \"\" },\n\"datos_pedido\": { \"nombre\": \"\", \"descripcion\": \"\", \"modalidad\": \"\", \"direccion\": \"\" }\n}\n\n📖 CARTA DEL DÍA (actualizada diariamente):\n{{ $('Parse Carta').item.json.carta }}\n\nUsá SIEMPRE esta carta como única fuente de platos y precios. Nunca inventes platos ni precios que no figuren en ella."
+          "systemMessage": "=Hoy es {{ new Date().toLocaleDateString('es', { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) }} (Argentina). Usá SIEMPRE esta fecha como referencia para calcular \"hoy\", \"mañana\" y los días de semana en datos_reserva.fecha. Eres el recepcionista virtual de \"Andi\", un restaurante que se caracteriza por ser elegante y amigable. Tu misión es atender a los clientes por WhatsApp, identificar si desean reservar una mesa o hacer un pedido, responder sus dudas y guiar proactivamente la conversación para recolectar los datos exactos. Ten en cuenta que todo el flujo y gestión se realiza a través de openclaw, por lo que tu salida de datos debe ser perfecta y estructurada.\n\n⚠️ IMPORTANTE: TODAS tus respuestas deben ser estrictamente en formato JSON puro. Sin texto adicional, sin comillas exteriores y sin bloques de código markdown.\n\nEl JSON de salida DEBE tener SIEMPRE la siguiente estructura con todas sus claves presentes (usa \"\" si no vas a usar un mensaje o si un dato aún no existe):\n\n{\n\"mensaje_1\": \"Tu primera burbuja de chat\",\n\"mensaje_2\": \"Tu segunda burbuja de chat (opcional, si no usa '')\",\n\"mensaje_3\": \"Tu tercera burbuja de chat (opcional, si no usa '')\",\n\"intencion_detectada\": \"reserva | pedido | consulta | indefinido\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": {\n\"fecha\": \"\",\n\"turno\": \"\",\n\"nombre\": \"\",\n\"telefono\": \"\",\n\"comensales\": \"\",\n\"horario\": \"\",\n\"mozo\": \"\",\n\"notas\": \"\"\n},\n\"datos_pedido\": {\n\"nombre\": \"\",\n\"descripcion\": \"\",\n\"modalidad\": \"\",\n\"direccion\": \"\"\n}\n}\n\n🍽️ REGLAS DE NEGOCIO Y CONVERSACIÓN:\n\nTono de voz: Elegante pero amigable. Trata al cliente con respeto. Usa emojis relacionados con gastronomía (🍷, 🍽️, ✨, 🥩, ☕) de forma moderada.\n\nIdentificación inicial: Si el cliente solo saluda (ej. \"Hola\"), pregúntale si desea reservar una mesa o realizar un pedido. Si el cliente ya expresa su intención directa (ej. \"Quiero hacer un pedido\"), NO repitas la pregunta inicial; asume la intención y procede inmediatamente a pedirle los detalles necesarios.\n\n🍲 CONOCIMIENTO DE LA CARTA (MENÚ) Y USO DEL ENLACE - REGLA CRÍTICA:\n\nCada mensaje que recibís incluye la CARTA DEL DÍA completa (platos y precios), que se actualiza diariamente. Usá SIEMPRE esa carta como única fuente para sugerir platos, recomendar opciones o responder precios: nunca inventes platos ni precios que no figuren ahí.\n\nSUGERENCIAS: Cuando el cliente pida recomendaciones, sugerile platos reales de la carta actual, con su precio. Si la carta indica que no está disponible (\"El menú no está disponible en este momento...\"), no inventes platos: compartile el enlace de la carta.\n\nUSO DEL ENLACE: SOLO debes enviar el enlace de la carta ([https://andirestaurante.com.ar/nuestra-carta/](https://andirestaurante.com.ar/nuestra-carta/)) si el cliente EXPRESAMENTE pide ver el menú completo, o si indica que quiere pedir pero no tiene idea de qué opciones hay.\n\nPROHIBICIÓN: NUNCA envíes el enlace de la carta en cada mensaje. Si el cliente ya está pidiendo, preguntando por un plato específico, o si ya le enviaste el link en un mensaje anterior, NO lo vuelvas a enviar.\n\n\n⏰ DETECCIÓN AUTOMÁTICA DE TURNO:\nSi el cliente indica una hora que está entre las 11:00 y 15:00 (inclusive), el turno es AUTOMÁTICAMENTE \"mediodia\". Si la hora es entre las 19:00 y 01:00 (o sea, 19, 20, 21, 22, 23, 0, 1 hs), el turno es AUTOMÁTICAMENTE \"cena\". NO preguntes el turno si la hora ya lo indica claramente. Por ejemplo: \"a las 21\" = cena, \"a las 13\" = mediodía. Solo preguntá el turno si la hora está fuera de estos rangos o no fue indicada.\n\n📅 FLUJO 1: RESERVAS DE MESA\nTu meta es conseguir la información del formulario de reserva.\n\nDatos OBLIGATORIOS: Fecha (Día exacto), Turno (Mediodía [11:30 - 15:00] o Cena [19:30 - 01:00]), Nombre, Comensales, Horario exacto. En el campo \"fecha\" guardá SIEMPRE la palabra exacta que dijo el cliente (\"hoy\", \"mañana\", \"pasado mañana\", \"15/06\") o la fecha concreta; NUNCA dejes \"fecha\" vacío si el cliente indicó un día.\n\nDatos OPCIONALES: Teléfono, Mozo, Notas especiales.\n\nLógica: MIENTRAS falte un dato obligatorio, \"crear_reserva\" debe ser false. Cuando tengas todos, cambia a true.\n\nConsultas: Si el usuario pregunta por disponibilidad sin dar todos los datos, fija \"consultar_disponibilidad\" en true y avísale que vas a verificar. Nunca confirmes definitivamente el lugar.\n\n🛍️ FLUJO 2: PEDIDOS (TAKE AWAY / DELIVERY)\nTu meta es recolectar el detalle exacto de lo que el cliente desea consumir.\n\nDatos OBLIGATORIOS: Nombre, Detalle del pedido y Modalidad (\"retiro\" o \"envio\"). Si la modalidad es \"envio\", la Dirección exacta de entrega también es OBLIGATORIA.\n\nSi el cliente aún no dijo si retira o quiere envío, preguntáslo ANTES de confirmar. Si elige envío, pedile la dirección exacta (calle y número).\n\nValidación: Si el cliente pide algo, verifica con tu conocimiento de la carta. Si algo no está claro, pregúntale.\n\nConfirmación: MIENTRAS no tengas claro el nombre, el detalle completo y la modalidad (retiro o envío, con dirección si es envío), \"crear_pedido\" debe ser false. Una vez confirmados todos los datos, cambia \"crear_pedido\" a true.\n\nIMPORTANTE - ESTADO DEL PEDIDO: Cuando crear_pedido sea true, el pedido recién queda REGISTRADO. El restaurante lo va a confirmar en breve. NUNCA digas que el pedido está \"en camino\", \"salió\", \"ya se está preparando\", \"está siendo preparado\" o similar, porque aún no fue confirmado. Usá frases como: \"Tu pedido quedó registrado, te avisamos cuando el restaurante lo confirme\". Recuerda que la gestión se realiza a través de openclaw, no afirmes nada que no sea la preparación o confirmación del establecimiento.\n\n❌ CANCELACIÓN DE RESERVA O PEDIDO: Si el cliente pide cancelar, anular o liberar una reserva O un pedido que ya hizo, el sistema lo identificará automáticamente por su número de WhatsApp. Fijá \"cancelar_reserva\" en true (si es reserva) o \"cancelar_pedido\" en true (si es pedido) INMEDIATAMENTE. NO le pidas nombre ni teléfono. IMPORTANTE: NUNCA confirmes que la cancelación fue exitosa. En su lugar, generá ÚNICAMENTE un 'mensaje_1' diciendo que vas a buscar su reserva o pedido en el sistema para cancelarlo, y dejá 'mensaje_2' y 'mensaje_3' COMPLETAMENTE VACÍOS. No combines cancelar_reserva con cancelar_pedido ni con crear.\n\n🚫 RESTRICCIONES ESTRICTAS:\n\n⛔ DÍAS CERRADOS (REGLA CRÍTICA): El restaurante cierra los MARTES. Nunca digas que una reserva o pedido quedó registrado/confirmado, ni \"te esperamos\", para un martes. Si el cliente pide un martes (o \"próximo martes\"), respondé que lamentablemente los martes estamos cerrados y ofrecé otro día (miércoles en adelante). En ese caso crear_reserva y crear_pedido deben quedar en false (el sistema no permite crear los martes; el aviso se lo das vos en el mensaje).\n\nNunca inventes platos del menú, precios, ni asumas fechas. Basa tus respuestas SIEMPRE en la CARTA DEL DÍA incluida en el mensaje.\n\nNunca fijes true en más de una acción ejecutora a la vez (crear_reserva, consultar_disponibilidad, crear_pedido).\n\n🎯 EJEMPLOS DE INTERACCIÓN:\n\nEjemplo 1: Cliente pide ver el menú (AQUÍ SÍ SE ENVÍA EL ENLACE)\nUsuario: \"Hola, me pasas el menú para pedir algo?\"\nTu Respuesta:\n{\n\"mensaje_1\": \"¡Hola! Qué gusto saludarte. ✨\",\n\"mensaje_2\": \"Claro, aquí tienes nuestra carta completa con todos los productos y precios: https://andirestaurante.com.ar/nuestra-carta/\",\n\"mensaje_3\": \"Cuando sepas qué te gustaría disfrutar hoy, dime y te tomo el pedido junto con tu nombre.\",\n\"intencion_detectada\": \"pedido\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": { \"fecha\": \"\", \"turno\": \"\", \"nombre\": \"\", \"telefono\": \"\", \"comensales\": \"\", \"horario\": \"\", \"mozo\": \"\", \"notas\": \"\" },\n\"datos_pedido\": { \"nombre\": \"\", \"descripcion\": \"\", \"modalidad\": \"\", \"direccion\": \"\" }\n}\n\nEjemplo 2: Cliente pregunta por un plato específico (AQUÍ NO SE ENVÍA EL ENLACE)\nUsuario: \"Hola, tienen opciones sin TACC?\"\nTu Respuesta:\n{\n\"mensaje_1\": \"¡Hola! Sí, contamos con varias opciones sin TACC en nuestra carta. ✨\",\n\"mensaje_2\": \"Por ejemplo, te puedo ofrecer [Mencionar opción de tu contexto]. ¿Te gustaría que te tome el pedido de alguna de estas opciones?\",\n\"mensaje_3\": \"\",\n\"intencion_detectada\": \"consulta\",\n\"crear_reserva\": false,\n\"consultar_disponibilidad\": false,\n\"crear_pedido\": false,\n\"datos_reserva\": { \"fecha\": \"\", \"turno\": \"\", \"nombre\": \"\", \"telefono\": \"\", \"comensales\": \"\", \"horario\": \"\", \"mozo\": \"\", \"notas\": \"\" },\n\"datos_pedido\": { \"nombre\": \"\", \"descripcion\": \"\", \"modalidad\": \"\", \"direccion\": \"\" }\n}\n\n📖 CARTA DEL DÍA (actualizada diariamente):\n{{ $('Parse Carta').item.json.carta }}\n\nUsá SIEMPRE esta carta como única fuente de platos y precios. Nunca inventes platos ni precios que no figuren en ella."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        -79056,
-        -3056
+        192,
+        -992
       ],
       "id": "c0c970e4-ec30-4c2b-b9d2-6f977e5a1a6c",
       "name": "AI Agent",
@@ -287,8 +287,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -78512,
-        -3040
+        736,
+        -976
       ],
       "id": "c9791426-2f97-4293-9378-1abb299f0df7",
       "name": "Edit Fields1"
@@ -306,8 +306,8 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -78080,
-        -3072
+        1168,
+        -1008
       ],
       "id": "4c975ffa-3c19-443e-b9aa-50d56a2527a3",
       "name": "enviar mensaje 1",
@@ -332,8 +332,8 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -77792,
-        -3184
+        1456,
+        -1120
       ],
       "id": "26bc0a7d-f906-4d4a-9bc2-6947e2cf940b",
       "name": "enviar mensaje 2",
@@ -359,8 +359,8 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -77440,
-        -3168
+        1808,
+        -1104
       ],
       "id": "9c85f70c-0110-4aa5-a4b2-0dd75bc221d4",
       "name": "enviar mensaje 3",
@@ -375,13 +375,13 @@
     {
       "parameters": {
         "schemaType": "manual",
-        "inputSchema": "={\n  \"type\": \"object\",\n  \"properties\": {\n    \"mensaje_1\": {\n      \"type\": \"string\"\n    },\n    \"mensaje_2\": {\n      \"type\": \"string\"\n    },\n    \"mensaje_3\": {\n      \"type\": \"string\"\n    },\n    \"crear_reserva\": {\n      \"type\": \"boolean\"\n    },\n    \"datos_reserva\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nombre\": {\n          \"type\": \"string\"\n        },\n        \"telefono\": {\n          \"type\": \"string\"\n        },\n        \"comensales\": {\n          \"type\": \"string\"\n        },\n        \"horario\": {\n          \"type\": \"string\"\n        },\n        \"notas\": {\n          \"type\": \"string\"\n        }\n      }\n    },\n    \"consultar_disponibilidad\": {\n      \"type\": \"boolean\"\n    },\n    \"turno\": {\n      \"type\": \"string\"\n    },\n    \"mozo\": {\n      \"type\": \"string\"\n    },\n    \"crear_pedido\": {\n      \"type\": \"boolean\"\n    },\n    \"cancelar_reserva\": {\n      \"type\": \"boolean\"\n    },\n    \"datos_pedido\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nombre\": {\n          \"type\": \"string\"\n        },\n        \"descripcion\": {\n          \"type\": \"string\"\n        },\n        \"modalidad\": {\n          \"type\": \"string\"\n        },\n        \"direccion\": {\n          \"type\": \"string\"\n        }\n      }\n    }\n  },\n  \"required\": [\n    \"mensaje_1\",\n    \"crear_reserva\",\n    \"consultar_disponibilidad\",\n    \"crear_pedido\",\n    \"cancelar_reserva\",\n    \"datos_pedido\"\n  ]\n}"
+        "inputSchema": "={\n  \"type\": \"object\",\n  \"properties\": {\n    \"mensaje_1\": {\n      \"type\": \"string\"\n    },\n    \"mensaje_2\": {\n      \"type\": \"string\"\n    },\n    \"mensaje_3\": {\n      \"type\": \"string\"\n    },\n    \"crear_reserva\": {\n      \"type\": \"boolean\"\n    },\n    \"datos_reserva\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nombre\": {\n          \"type\": \"string\"\n        },\n        \"telefono\": {\n          \"type\": \"string\"\n        },\n        \"comensales\": {\n          \"type\": \"string\"\n        },\n        \"horario\": {\n          \"type\": \"string\"\n        },\n        \"notas\": {\n          \"type\": \"string\"\n        }\n      }\n    },\n    \"consultar_disponibilidad\": {\n      \"type\": \"boolean\"\n    },\n    \"turno\": {\n      \"type\": \"string\"\n    },\n    \"mozo\": {\n      \"type\": \"string\"\n    },\n    \"crear_pedido\": {\n      \"type\": \"boolean\"\n    },\n    \"cancelar_reserva\": {\n      \"type\": \"boolean\"\n    },\n    \"datos_pedido\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nombre\": {\n          \"type\": \"string\"\n        },\n        \"descripcion\": {\n          \"type\": \"string\"\n        },\n        \"modalidad\": {\n          \"type\": \"string\"\n        },\n        \"direccion\": {\n          \"type\": \"string\"\n        }\n      }\n    },\n    \"cancelar_pedido\": {\n      \"type\": \"boolean\"\n    }\n  },\n  \"required\": [\n    \"mensaje_1\",\n    \"crear_reserva\",\n    \"consultar_disponibilidad\",\n    \"crear_pedido\",\n    \"cancelar_reserva\",\n    \"datos_pedido\",\n    \"cancelar_pedido\"\n  ]\n}"
       },
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        -78848,
-        -2816
+        400,
+        -752
       ],
       "id": "b5feb4a1-4525-4e79-b50c-243b9959583b",
       "name": "Structured Output Parser"
@@ -398,8 +398,8 @@
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        -79872,
-        -3296
+        -624,
+        -1232
       ],
       "credentials": {
         "redis": {
@@ -418,8 +418,8 @@
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        -79664,
-        -3296
+        -416,
+        -1232
       ],
       "id": "60708579-adbc-419c-a57a-ffad6b5e2aa6",
       "name": "Get Message Buffer",
@@ -493,8 +493,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        -79440,
-        -3312
+        -192,
+        -1248
       ],
       "id": "89d2b4dd-6e94-43aa-b220-d7c427af8324",
       "name": "Switch"
@@ -506,8 +506,8 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        -79296,
-        -3168
+        -48,
+        -1104
       ],
       "id": "7b507937-3b3a-4977-88f4-d4387cc91289",
       "name": "Wait2",
@@ -518,8 +518,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -78896,
-        -3488
+        352,
+        -1424
       ],
       "id": "19564fc0-5916-457f-9fef-46042391da9e",
       "name": "No Operation, do nothing"
@@ -532,8 +532,8 @@
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        -79136,
-        -3296
+        112,
+        -1232
       ],
       "id": "697ac11e-fd36-419c-bba3-29500b960d62",
       "name": "Eliminar Buffer",
@@ -552,8 +552,8 @@
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        -78912,
-        -3296
+        336,
+        -1232
       ],
       "id": "15479b8f-b6b6-4a31-b161-bcdf31115989",
       "name": "Split Out"
@@ -567,8 +567,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -78704,
-        -3296
+        544,
+        -1232
       ],
       "id": "eb40006a-4c43-4ff1-8044-ba9f2e6f7236",
       "name": "JSON Parse"
@@ -589,15 +589,14 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        -78480,
-        -3296
+        768,
+        -1232
       ],
       "id": "44581ffa-2f49-487e-a96a-c5da046d76c7",
       "name": "Aggregate"
     },
     {
       "parameters": {
-        "authentication": "serviceAccount",
         "sendTo": "vectraweb00@gmail.com",
         "subject": "Error del agente WhatsApp",
         "emailType": "text",
@@ -607,16 +606,16 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        -78656,
-        -2832
+        592,
+        -768
       ],
       "id": "c9e95a60-6fdb-4f1b-97e9-c9c786187170",
       "name": "Send a message",
       "webhookId": "509f3062-3c69-4e92-a34e-bfb62da7bb9c",
       "credentials": {
-        "googleApi": {
-          "id": "4oMTtyVYbyEwbL9v",
-          "name": "Google Service Account account"
+        "gmailOAuth2": {
+          "id": "zG0DwN37ND3vuVmt",
+          "name": "Gmail account"
         }
       }
     },
@@ -637,8 +636,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -78192,
-        -3296
+        1056,
+        -1232
       ],
       "id": "f9afe62c-7d27-4ee2-b965-d17b6b563ec4",
       "name": "Edit Fields - Salto de linea"
@@ -652,8 +651,8 @@
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        -78960,
-        -2800
+        288,
+        -736
       ],
       "id": "38e57aac-c477-4da9-ac72-897e3d254aa0",
       "name": "Simple Memory"
@@ -674,8 +673,8 @@
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.2,
       "position": [
-        -78640,
-        -3776
+        608,
+        -1712
       ],
       "id": "c31e108e-425d-4158-b388-2a9950bfd290",
       "name": "Transcribe a recording1",
@@ -694,8 +693,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.1,
       "position": [
-        -79216,
-        -2816
+        32,
+        -752
       ],
       "id": "4d0ae5d2-2040-4cfa-9cf7-54b372d19089",
       "name": "Google Gemini Chat Model",
@@ -714,8 +713,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.1,
       "position": [
-        -79088,
-        -2816
+        160,
+        -752
       ],
       "id": "f1a05ba2-d9fc-4af7-8d43-8d152865328a",
       "name": "Google Gemini Chat Model1",
@@ -817,6 +816,28 @@
                 ],
                 "combinator": "and"
               }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('AI Agent').item.json.output.cancelar_pedido }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8a250a9d-d001-43b9-8bca-6adc15067e3c"
+                  }
+                ],
+                "combinator": "and"
+              }
             }
           ]
         },
@@ -826,8 +847,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -78240,
-        -2800
+        1008,
+        -736
       ],
       "id": "47adc1a8-e472-4843-a745-1e2d7fa8c19b",
       "name": "Switch2"
@@ -903,8 +924,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -78016,
-        -2800
+        1232,
+        -736
       ],
       "id": "a617bc5d-501f-49af-a6f1-482d8e5228b1",
       "name": "Parse Time & Service"
@@ -935,19 +956,19 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -77616,
-        -2800
+        1632,
+        -736
       ]
     },
     {
       "parameters": {
-        "jsCode": "const reservationsResp = $('Get Day Reservations').item.json;\nconst parse = $('Parse Time & Service').item.json;\n\nconst requestedPartySize = parse.partySize || 2;\nconst requestedDate = parse.reservation_date;\nconst requestedService = parse.reservation_service;\nconst requestedTime = parse.reservation_time;\n\n// ── Martes cerrado ──\nconst fp = (requestedDate || '').split('-');\nif (fp.length === 3) {\n  const fd = new Date(+fp[0], +fp[1] - 1, +fp[2]);\n  if (fd.getDay() === 2) {\n    return [{\n      json: {\n        closed_error: true,\n        closed_message: 'Lo sentimos, los martes estamos cerrados. Podés reservar otro día.',\n        has_availability: false,\n        assigned_table: null,\n        assigned_table_name: null,\n        assigned_table_capacity: null,\n        free_tables: 0,\n        free_suitable_tables: 0,\n        total_tables: 0,\n        occupied_tables: 0,\n        requested_party_size: requestedPartySize,\n        requested_time: requestedTime,\n        requested_date: requestedDate,\n        requested_service: requestedService,\n        customerName: parse.customerName || '',\n        phone: '',\n        notes: parse.notes || '',\n        mozo: parse.mozo || '',\n        reservation_estado: 'pendiente',\n        customerPhone: '',\n        duplicate_error: false,\n      }\n    }];\n  }\n}\n\n// ── Helpers ──\nconst extractDocuments = (data) => {\n  if (!data) return [];\n  if (Array.isArray(data)) return data.map(x => (x && x.document) ? x.document : x);\n  if (data.documents && Array.isArray(data.documents)) return data.documents;\n  if (data.items && Array.isArray(data.items)) return data.items;\n  if (data.body) return extractDocuments(data.body);\n  if (data.data) return extractDocuments(data.data);\n  return [];\n};\n\nconst extractField = (item, key) => {\n  if (!item) return null;\n  if (item.document) item = item.document;\n  if (item.fields && item.fields[key]) {\n    const f = item.fields[key];\n    return f.stringValue !== undefined ? f.stringValue :\n           f.integerValue !== undefined ? parseInt(f.integerValue) :\n           f.booleanValue !== undefined ? f.booleanValue :\n           f.doubleValue !== undefined ? parseFloat(f.doubleValue) : null;\n  }\n  return item[key] !== undefined ? item[key] : null;\n};\n\nconst extractId = (item) => {\n  if (!item) return '';\n  if (item.id) return item.id;\n  if (item.name) return item.name.split('/').pop();\n  return '';\n};\n\nconst normalizePhone = (p) => {\n  if (!p) return '';\n  let s = String(p).replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  const m = s.match(/^(\\d{2,4})15(\\d{6,8})$/);\n  if (m) s = m[1] + '9' + m[2];\n  return '54' + s;\n};\n\n// ── Build reservations list (pedidos del bot no cuentan) ──\nconst reservationDocs = extractDocuments(reservationsResp);\nconst reservationsArray = reservationDocs.map(r => ({\n  id: extractId(r),\n  date: extractField(r, 'date'),\n  service: extractField(r, 'service'),\n  customerPhone: normalizePhone(extractField(r, 'customerPhone') || extractField(r, 'phone')),\n  source: extractField(r, 'source') || '',\n  estado: extractField(r, 'estado') || '',\n}));\n\nconst realReservations = reservationsArray.filter(r =>\n  r.source !== 'whatsapp_bot' &&\n  !['cancelado', 'no_show', 'ausente'].includes(r.estado)\n);\n\nconst rawPhone = parse.phone || $('Webhook1').item.json.body.data.key.remoteJid || '';\nconst phone = normalizePhone(rawPhone);\n\n// ── Duplicate check ──\nconst isDuplicate = phone && realReservations.some(r =>\n  r.customerPhone === phone &&\n  r.service === requestedService &&\n  r.date === requestedDate\n);\n\nif (isDuplicate) {\n  return [{\n    json: {\n      has_availability: false,\n      assigned_table: null,\n      assigned_table_name: null,\n      assigned_table_capacity: null,\n      free_tables: 0,\n      free_suitable_tables: 0,\n      total_tables: 0,\n      occupied_tables: 0,\n      requested_party_size: requestedPartySize,\n      requested_time: requestedTime,\n      requested_date: requestedDate,\n      requested_service: requestedService,\n      customerName: parse.customerName || '',\n      phone: phone,\n      notes: parse.notes || '',\n      mozo: parse.mozo || '',\n      reservation_estado: 'pendiente',\n      customerPhone: phone,\n      duplicate_error: true,\n    }\n  }];\n}\n\n// El recepcionista asigna la mesa: el bot NO agenda mesa automáticamente.\nreturn [{\n  json: {\n    has_availability: true,\n    assigned_table: null,\n    assigned_table_name: null,\n    assigned_table_capacity: null,\n    free_tables: 0,\n    free_suitable_tables: 0,\n    total_tables: 0,\n    occupied_tables: 0,\n    requested_party_size: requestedPartySize,\n    requested_time: requestedTime,\n    requested_date: requestedDate,\n    requested_service: requestedService,\n    customerName: parse.customerName || '',\n    phone: phone,\n    notes: parse.notes || '',\n    mozo: parse.mozo || '',\n    reservation_estado: 'pendiente',\n    customerPhone: phone,\n    duplicate_error: false,\n  }\n}];"
+        "jsCode": "const reservationsResp = $('Get Day Reservations').item.json;\nconst parse = $('Parse Time & Service').item.json;\n\nconst requestedPartySize = parse.partySize || 2;\nconst requestedDate = parse.reservation_date;\nconst requestedService = parse.reservation_service;\nconst requestedTime = parse.reservation_time;\n\n// ── Martes cerrado ──\nconst fp = (requestedDate || '').split('-');\nif (fp.length === 3) {\n  const fd = new Date(+fp[0], +fp[1] - 1, +fp[2]);\n  if (fd.getDay() === 2) {\n    return [{\n      json: {\n        closed_error: true,\n        closed_message: 'Lo sentimos, los martes estamos cerrados. Podés reservar otro día.',\n        has_availability: false,\n        assigned_table: null,\n        assigned_table_name: null,\n        assigned_table_capacity: null,\n        free_tables: 0,\n        free_suitable_tables: 0,\n        total_tables: 0,\n        occupied_tables: 0,\n        requested_party_size: requestedPartySize,\n        requested_time: requestedTime,\n        requested_date: requestedDate,\n        requested_service: requestedService,\n        customerName: parse.customerName || '',\n        phone: '',\n        notes: parse.notes || '',\n        mozo: parse.mozo || '',\n        reservation_estado: 'pendiente',\n        customerPhone: '',\n        duplicate_error: false,\n      }\n    }];\n  }\n}\n\n// ── Helpers ──\nconst extractDocuments = (data) => {\n  if (!data) return [];\n  if (Array.isArray(data)) return data.map(x => (x && x.document) ? x.document : x);\n  if (data.documents && Array.isArray(data.documents)) return data.documents;\n  if (data.items && Array.isArray(data.items)) return data.items;\n  if (data.body) return extractDocuments(data.body);\n  if (data.data) return extractDocuments(data.data);\n  return [];\n};\n\nconst extractField = (item, key) => {\n  if (!item) return null;\n  if (item.document) item = item.document;\n  if (item.fields && item.fields[key]) {\n    const f = item.fields[key];\n    return f.stringValue !== undefined ? f.stringValue :\n           f.integerValue !== undefined ? parseInt(f.integerValue) :\n           f.booleanValue !== undefined ? f.booleanValue :\n           f.doubleValue !== undefined ? parseFloat(f.doubleValue) : null;\n  }\n  return item[key] !== undefined ? item[key] : null;\n};\n\nconst extractId = (item) => {\n  if (!item) return '';\n  if (item.document) item = item.document;\n  if (item.id) return item.id;\n  if (item.name) return item.name.split('/').pop();\n  return '';\n};\n\nconst normalizePhone = (p) => {\n  if (!p) return '';\n  let s = String(p).replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  const m = s.match(/^(\\d{2,4})15(\\d{6,8})$/);\n  if (m) s = m[1] + '9' + m[2];\n  return '54' + s;\n};\n\n// ── Build reservations list (pedidos del bot no cuentan) ──\nconst reservationDocs = extractDocuments(reservationsResp);\nconst reservationsArray = reservationDocs.map(r => ({\n  id: extractId(r),\n  date: extractField(r, 'date'),\n  service: extractField(r, 'service'),\n  customerPhone: normalizePhone(extractField(r, 'customerPhone') || extractField(r, 'phone')),\n  source: extractField(r, 'source') || '',\n  estado: extractField(r, 'estado') || '',\n}));\n\nconst realReservations = reservationsArray.filter(r =>\n  r.source !== 'whatsapp_bot' &&\n  !['cancelado', 'no_show', 'ausente'].includes(r.estado)\n);\n\nconst rawPhone = parse.phone || $('Webhook1').item.json.body.data.key.remoteJid || '';\nconst phone = normalizePhone(rawPhone);\n\n// ── Duplicate check ──\nconst isDuplicate = phone && realReservations.some(r =>\n  r.customerPhone === phone &&\n  r.service === requestedService &&\n  r.date === requestedDate\n);\n\nif (isDuplicate) {\n  return [{\n    json: {\n      has_availability: false,\n      assigned_table: null,\n      assigned_table_name: null,\n      assigned_table_capacity: null,\n      free_tables: 0,\n      free_suitable_tables: 0,\n      total_tables: 0,\n      occupied_tables: 0,\n      requested_party_size: requestedPartySize,\n      requested_time: requestedTime,\n      requested_date: requestedDate,\n      requested_service: requestedService,\n      customerName: parse.customerName || '',\n      phone: phone,\n      notes: parse.notes || '',\n      mozo: parse.mozo || '',\n      reservation_estado: 'pendiente',\n      customerPhone: phone,\n      duplicate_error: true,\n    }\n  }];\n}\n\n// El recepcionista asigna la mesa: el bot NO agenda mesa automáticamente.\nreturn [{\n  json: {\n    has_availability: true,\n    assigned_table: null,\n    assigned_table_name: null,\n    assigned_table_capacity: null,\n    free_tables: 0,\n    free_suitable_tables: 0,\n    total_tables: 0,\n    occupied_tables: 0,\n    requested_party_size: requestedPartySize,\n    requested_time: requestedTime,\n    requested_date: requestedDate,\n    requested_service: requestedService,\n    customerName: parse.customerName || '',\n    phone: phone,\n    notes: parse.notes || '',\n    mozo: parse.mozo || '',\n    reservation_estado: 'pendiente',\n    customerPhone: phone,\n    duplicate_error: false,\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -77408,
-        -2800
+        1840,
+        -736
       ],
       "id": "5a32e49a-ae36-4af0-a665-944f746b1fa3",
       "name": "Calc Availability"
@@ -959,8 +980,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -77056,
-        -2768
+        2192,
+        -704
       ],
       "id": "bf9cf7b6-66da-4adc-ac2e-7e335fde549a",
       "name": "Prepare Reservation"
@@ -986,8 +1007,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -76384,
-        -2768
+        2864,
+        -704
       ],
       "id": "501a91cd-093b-4fa7-af4d-cd8af42d80f4",
       "name": "Create Flat Reservation"
@@ -1013,8 +1034,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -76000,
-        -2880
+        3344,
+        -832
       ],
       "id": "8e87583c-2dc1-4254-a99f-b5f33fff669e",
       "name": "Create MesaReservada"
@@ -1026,8 +1047,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -75840,
-        -2784
+        3504,
+        -704
       ],
       "id": "cf53e8b8-45b7-4f9a-bc45-25dff385e5d6",
       "name": "Build Confirmation Message"
@@ -1045,8 +1066,8 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -75568,
-        -2784
+        3712,
+        -720
       ],
       "id": "f65892e0-3a17-4de4-b3b8-5a0ad8e5bfa4",
       "name": "Send Confirmation WhatsApp",
@@ -1085,8 +1106,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -76224,
-        -2768
+        3168,
+        -688
       ],
       "id": "014af017-cb5c-465f-a284-9e561719c41c",
       "name": "Has Table?"
@@ -1118,8 +1139,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -76896,
-        -2768
+        2352,
+        -704
       ],
       "id": "4526d6fc-4175-4157-a25d-be62f480d75c",
       "name": "Check Error?"
@@ -1137,8 +1158,8 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -76608,
-        -2928
+        2640,
+        -864
       ],
       "id": "1f105c2a-4a6f-4f29-bcbd-bd11ee9dfe53",
       "name": "Send Duplicate Error",
@@ -1179,8 +1200,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -77776,
-        -2800
+        1472,
+        -736
       ]
     },
     {
@@ -1212,8 +1233,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -76672,
-        -2752
+        2576,
+        -688
       ]
     },
     {
@@ -1231,8 +1252,8 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -76448,
-        -2656
+        2800,
+        -592
       ],
       "credentials": {
         "evolutionApi": {
@@ -1270,8 +1291,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -77264,
-        -2864
+        1984,
+        -800
       ]
     },
     {
@@ -1283,8 +1304,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -77088,
-        -3008
+        2160,
+        -944
       ]
     },
     {
@@ -1302,8 +1323,8 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -76864,
-        -3104
+        2384,
+        -1040
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -1343,8 +1364,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -77920,
-        -3072
+        1328,
+        -1008
       ]
     },
     {
@@ -1377,8 +1398,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -77632,
-        -3056
+        1616,
+        -992
       ]
     },
     {
@@ -1446,8 +1467,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -78016,
-        -2640
+        1232,
+        -576
       ],
       "id": "be6e9416-6173-4f58-ab6a-e3373492c2ee",
       "name": "Parse Pedido"
@@ -1459,8 +1480,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -77776,
-        -2640
+        1472,
+        -576
       ],
       "id": "4ff554f9-6bfb-4dc6-b537-4a8e5ac48f84",
       "name": "Prepare Pedido"
@@ -1486,8 +1507,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -77536,
-        -2640
+        1792,
+        -432
       ],
       "id": "b5c90174-61f6-408a-9f3e-bc020308f7bf",
       "name": "Create Pedido"
@@ -1505,8 +1526,8 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -77296,
-        -2640
+        1952,
+        -576
       ],
       "id": "b006e634-c261-4460-9fd8-343c77ed9ffb",
       "name": "Send Pedido Confirmation",
@@ -1532,8 +1553,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -77984,
-        -3776
+        1264,
+        -1712
       ],
       "id": "ba1d1faf-f9d9-41fb-bd1b-2cddb142a15b",
       "name": "Get Carta"
@@ -1545,8 +1566,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -77680,
-        -3776
+        1568,
+        -1712
       ],
       "id": "a98588dd-3455-4d34-afcb-f671f79f2705",
       "name": "Parse Carta"
@@ -1565,8 +1586,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -80048,
-        -3296
+        -800,
+        -1232
       ]
     },
     {
@@ -1578,8 +1599,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        -78000,
-        -3280
+        1248,
+        -1216
       ],
       "id": "3544e27a-9159-44d2-85fb-08e3c1d19ad9",
       "name": "Unir Carta"
@@ -1613,8 +1634,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -77632,
-        -2608
+        1616,
+        -544
       ]
     },
     {
@@ -1642,22 +1663,19 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -77920,
-        -2320
+        1328,
+        -256
       ]
     },
     {
       "parameters": {
-        "url": "https://firestore.googleapis.com/v1/projects/andimeet-93f62/databases/(default)/documents/reservations",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $('Firebase Auth Token').item.json.idToken }}"
-            }
-          ]
-        },
+        "method": "POST",
+        "url": "https://firestore.googleapis.com/v1/projects/andimeet-93f62/databases/(default)/documents:runQuery",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"structuredQuery\": { \"from\": [ { \"collectionId\": \"reservations\" } ], \"where\": { \"fieldFilter\": { \"field\": { \"fieldPath\": \"estado\" }, \"op\": \"IN\", \"value\": { \"arrayValue\": { \"values\": [ { \"stringValue\": \"pendiente\" }, { \"stringValue\": \"confirmada\" } ] } } } } } }",
         "options": {
           "response": {
             "response": {
@@ -1672,36 +1690,35 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -77680,
-        -2320
-      ]
+        1568,
+        -256
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "kFgHEL7B3y3uwMYr",
+          "name": "Firebase Service Account Auto"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const parse = $('Parse Cancelación').item.json;\nconst raw = $('Get Reservas Para Cancelar').item.json;\n\nconst extractDocuments = (data) => {\n  if (!data) return [];\n  if (Array.isArray(data)) return data;\n  if (data.documents && Array.isArray(data.documents)) return data.documents;\n  if (data.items && Array.isArray(data.items)) return data.items;\n  if (data.body) return extractDocuments(data.body);\n  if (data.data) return extractDocuments(data.data);\n  return [];\n};\n\nconst extractField = (item, key) => {\n  if (!item) return null;\n  if (item.document) item = item.document;\n  if (item.fields && item.fields[key]) {\n    const f = item.fields[key];\n    return f.stringValue !== undefined ? f.stringValue :\n           f.integerValue !== undefined ? parseInt(f.integerValue) :\n           f.booleanValue !== undefined ? f.booleanValue :\n           f.doubleValue !== undefined ? parseFloat(f.doubleValue) : null;\n  }\n  return item[key] !== undefined ? item[key] : null;\n};\n\nconst extractId = (item) => {\n  if (!item) return '';\n  if (item.id) return item.id;\n  if (item.name) return item.name.split('/').pop();\n  return '';\n};\n\nconst normalizePhone = (v) => {\n  if (!v) return '';\n  let s = String(v).replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  const m = s.match(/^(\\d{2,4})15(\\d{6,8})$/);\n  if (m) s = m[1] + '9' + m[2];\n  return '54' + s;\n};\n\nconst phone = normalizePhone(parse.cancel_telefono);\nconst nombre = String(parse.cancel_nombre || '').trim().toLowerCase();\n\nconst docs = extractDocuments(raw);\nconst candidates = docs\n  .map(d => ({\n    id: extractId(d),\n    customerPhone: normalizePhone(extractField(d, 'customerPhone') || extractField(d, 'phone')),\n    name: String(extractField(d, 'customerName') || '').trim().toLowerCase(),\n    estado: extractField(d, 'estado') || '',\n    date: extractField(d, 'date') || '',\n    tableId: extractField(d, 'tableId') || extractField(d, 'mesa_id') || '',\n    service: extractField(d, 'service') || '',\n    createdAt: extractField(d, 'createdAt') || '',\n  }))\n  .filter(r => ['pendiente', 'confirmada'].includes(r.estado))\n  .filter(r => (phone && r.customerPhone === phone) || (nombre && r.name === nombre));\n\ncandidates.sort((a, b) => (b.createdAt || '') > (a.createdAt || '') ? 1 : -1);\nconst found = candidates[0] || null;\n\nreturn [{\n  json: {\n    found: !!found,\n    reservation_id: found ? found.id : '',\n    mesa_res_id: found && found.tableId && found.date && found.service ? found.tableId + '_' + found.date + '_' + found.service : '',\n  }\n}];"
+        "jsCode": "const parse = $('Parse Cancelación').item.json;\nconst allRaw = $('Get Reservas Para Cancelar').all();\nconst raw = allRaw.map(i => i.json);\n\nconst extractDocuments = (data) => {\n  if (!data) return [];\n  if (Array.isArray(data)) return data;\n  if (data.documents && Array.isArray(data.documents)) return data.documents;\n  if (data.items && Array.isArray(data.items)) return data.items;\n  if (data.body) return extractDocuments(data.body);\n  if (data.data) return extractDocuments(data.data);\n  return [];\n};\n\nconst extractField = (item, key) => {\n  if (!item) return null;\n  if (item.document) item = item.document;\n  if (item.fields && item.fields[key]) {\n    const f = item.fields[key];\n    return f.stringValue !== undefined ? f.stringValue :\n           f.integerValue !== undefined ? parseInt(f.integerValue) :\n           f.booleanValue !== undefined ? f.booleanValue :\n           f.doubleValue !== undefined ? parseFloat(f.doubleValue) : null;\n  }\n  return item[key] !== undefined ? item[key] : null;\n};\n\nconst extractId = (item) => {\n  if (!item) return '';\n  if (item.document) item = item.document;\n  if (item.id) return item.id;\n  if (item.name) return item.name.split('/').pop();\n  return '';\n};\n\nconst normalizePhone = (v) => {\n  if (!v) return '';\n  let s = String(v).replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  const m = s.match(/^(\\d{2,4})15(\\d{6,8})$/);\n  if (m) s = m[1] + '9' + m[2];\n  return '54' + s;\n};\n\nconst senderPhone = normalizePhone($('Webhook1').item?.json?.body?.data?.key?.remoteJid || '');\nconst phone = normalizePhone(parse.cancel_telefono) || senderPhone;\nconst nombre = String(parse.cancel_nombre || '').trim().toLowerCase();\n\nconst docs = extractDocuments(raw);\nconst candidates = docs\n  .map(d => ({\n    id: extractId(d),\n    customerPhone: normalizePhone(extractField(d, 'customerPhone') || extractField(d, 'phone')),\n    name: String(extractField(d, 'customerName') || '').trim().toLowerCase(),\n    estado: extractField(d, 'estado') || '',\n    date: extractField(d, 'date') || '',\n    tableId: extractField(d, 'tableId') || extractField(d, 'mesa_id') || '',\n    service: extractField(d, 'service') || '',\n    createdAt: extractField(d, 'createdAt') || '',\n  }))\n  .filter(r => ['pendiente', 'confirmada'].includes(r.estado))\n  .filter(r => (phone && r.customerPhone === phone) || (nombre && r.name.includes(nombre)));\n\ncandidates.sort((a, b) => (b.createdAt || '') > (a.createdAt || '') ? 1 : -1);\nconst found = candidates[0] || null;\n\nreturn [{\n  json: {\n    found: !!found,\n    reservation_id: found ? found.id : '',\n    mesa_res_id: found && found.tableId && found.date && found.service ? found.tableId + '_' + found.date + '_' + found.service : '',\n  }\n}];"
       },
       "id": "cancel-find-node",
       "name": "Buscar Reserva Cliente",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -77440,
-        -2320
+        1808,
+        -256
       ]
     },
     {
       "parameters": {
         "method": "PATCH",
         "url": "=https://firestore.googleapis.com/v1/projects/andimeet-93f62/databases/(default)/documents/reservations/{{ $('Buscar Reserva Cliente').item.json.reservation_id }}?updateMask.fieldPaths=estado&updateMask.fieldPaths=canceladoMotivo&updateMask.fieldPaths=updatedAt",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $('Firebase Auth Token').item.json.idToken }}"
-            }
-          ]
-        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ fields: { estado: { stringValue: 'cancelado' }, canceladoMotivo: { stringValue: 'solicitud_cliente' }, updatedAt: { stringValue: $now.toISO() } } }) }}",
@@ -1719,23 +1736,22 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -77200,
-        -2320
-      ]
+        2048,
+        -256
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "kFgHEL7B3y3uwMYr",
+          "name": "Firebase Service Account Auto"
+        }
+      }
     },
     {
       "parameters": {
         "method": "DELETE",
         "url": "=https://firestore.googleapis.com/v1/projects/andimeet-93f62/databases/(default)/documents/mesasReservadas/{{ $('Buscar Reserva Cliente').item.json.mesa_res_id }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $('Firebase Auth Token').item.json.idToken }}"
-            }
-          ]
-        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
         "options": {
           "response": {
             "response": {
@@ -1750,21 +1766,27 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -76960,
-        -2320
-      ]
+        2784,
+        -352
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "kFgHEL7B3y3uwMYr",
+          "name": "Firebase Service Account Auto"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const found = $('Buscar Reserva Cliente').item.json.found;\nreturn [{ json: { mensaje: found ? '✅ Tu reserva fue cancelada. ¡Gracias por avisarnos! 🙏' : 'No encontramos una reserva activa con esos datos. ¿Podés confirmarnos el número con el que reservaste? 🤔' } }];"
+        "jsCode": "const found = $('Buscar Reserva Cliente').item.json.found;\nconst cancelName = $('Parse Cancelación').item.json.cancel_nombre || '';\nconst nameStr = cancelName ? `, ${cancelName.charAt(0).toUpperCase() + cancelName.slice(1)}` : '';\n\nif (found) {\n    const successMessages = [\n        `¡Listo${nameStr}! Ya cancelamos tu reserva. ¡Gracias por avisarnos con tiempo! 🙌`,\n        `Reserva cancelada exitosamente${nameStr}. ¡Esperamos verte pronto por Andi! ✨`,\n        `¡Perfecto${nameStr}! Acabo de dar de baja tu reserva. ¡Que tengas un excelente día! 🍷`\n    ];\n    return [{ json: { mensaje: successMessages[Math.floor(Math.random() * successMessages.length)] } }];\n} else {\n    const failMessages = [\n        `Revisé el sistema pero no encontré ninguna reserva activa vinculada a tu número${nameStr}. ¿Puede ser que hayas reservado con otro teléfono? 🤔`,\n        `No me figura ninguna reserva en este momento. Si la hiciste con otro celular, pasámelo y lo verifico. 👇`,\n        `Me fijé en el sistema pero no hay reservas activas asociadas a este número. Si usaste otro teléfono, decime cuál es así la busco. 🧐`\n    ];\n    return [{ json: { mensaje: failMessages[Math.floor(Math.random() * failMessages.length)] } }];\n}"
       },
       "id": "cancel-build-msg",
       "name": "Build Cancel Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -76720,
-        -2320
+        2960,
+        -192
       ]
     },
     {
@@ -1782,8 +1804,8 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -76480,
-        -2320
+        3200,
+        -240
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -1805,8 +1827,8 @@
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        -79520,
-        -3904
+        -704,
+        -1840
       ],
       "credentials": {
         "redis": {
@@ -1845,8 +1867,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -79392,
-        -3904
+        -368,
+        -1808
       ]
     },
     {
@@ -1856,8 +1878,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -79392,
-        -3712
+        -144,
+        -1648
       ]
     },
     {
@@ -1871,7 +1893,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.error === undefined }}",
+              "leftValue": "={{ $json.error === undefined || $('Buscar Reserva Cliente').item.json.found === false }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -1890,8 +1912,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -77104,
-        -2320
+        2240,
+        -256
       ]
     },
     {
@@ -1909,8 +1931,8 @@
       "type": "n8n-nodes-evolution-api.evolutionApi",
       "typeVersion": 1,
       "position": [
-        -76816,
-        -2320
+        2432,
+        -176
       ],
       "credentials": {
         "evolutionApi": {
@@ -1928,12 +1950,278 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -79456,
-        -3904
+        -560,
+        -1840
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cancel-name-1",
+              "name": "cancel_nombre",
+              "value": "={{ $('AI Agent').item.json.output.datos_pedido.nombre || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "cancel-phone-1",
+              "name": "cancel_telefono",
+              "value": "={{ (() => { const raw = $('AI Agent').item.json.output.datos_reserva.telefono || $('Webhook1').item.json.body.data.key.remoteJid || ''; return String(raw).replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, ''); })() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ff3588e5-f856-4933-bfc4-00088154c2db",
+      "name": "Parse Cancelar Pedido",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1328,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://firestore.googleapis.com/v1/projects/andimeet-93f62/databases/(default)/documents:runQuery",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"structuredQuery\": { \"from\": [ { \"collectionId\": \"pedidos\" } ], \"where\": { \"fieldFilter\": { \"field\": { \"fieldPath\": \"pedidoEstado\" }, \"op\": \"IN\", \"value\": { \"arrayValue\": { \"values\": [ { \"stringValue\": \"pendiente\" }, { \"stringValue\": \"preparacion\" }, { \"stringValue\": \"en_camino\" } ] } } } } } }",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "36f21b0c-04de-4b78-8d71-d4f8612ab6fd",
+      "name": "Get Pedidos Para Cancelar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        48
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "kFgHEL7B3y3uwMYr",
+          "name": "Firebase Service Account Auto"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const parse = $('Parse Cancelar Pedido').item.json;\nconst allRaw = $('Get Pedidos Para Cancelar').all();\nconst raw = allRaw.map(i => i.json);\n\nconst extractDocuments = (data) => {\n  if (!data) return [];\n  if (Array.isArray(data)) return data;\n  if (data.documents && Array.isArray(data.documents)) return data.documents;\n  if (data.items && Array.isArray(data.items)) return data.items;\n  if (data.body) return extractDocuments(data.body);\n  if (data.data) return extractDocuments(data.data);\n  return [];\n};\n\nconst extractField = (item, key) => {\n  if (!item) return null;\n  if (item.document) item = item.document;\n  if (item.fields && item.fields[key]) {\n    const f = item.fields[key];\n    return f.stringValue !== undefined ? f.stringValue :\n           f.integerValue !== undefined ? parseInt(f.integerValue) :\n           f.booleanValue !== undefined ? f.booleanValue :\n           f.doubleValue !== undefined ? parseFloat(f.doubleValue) : null;\n  }\n  return item[key] !== undefined ? item[key] : null;\n};\n\nconst extractId = (item) => {\n  if (!item) return '';\n  if (item.document) item = item.document;\n  if (item.id) return item.id;\n  if (item.name) return item.name.split('/').pop();\n  return '';\n};\n\nconst normalizePhone = (v) => {\n  if (!v) return '';\n  let s = String(v).replace(/@s\\.whatsapp\\.net$/i, '').replace(/[^0-9]/g, '');\n  if (!s) return '';\n  if (s.startsWith('0')) s = s.slice(1);\n  if (s.startsWith('54')) return s;\n  const m = s.match(/^(\\d{2,4})15(\\d{6,8})$/);\n  if (m) s = m[1] + '9' + m[2];\n  return '54' + s;\n};\n\nconst senderPhone = normalizePhone($('Webhook1').item?.json?.body?.data?.key?.remoteJid || '');\nconst phone = normalizePhone(parse.cancel_telefono) || senderPhone;\nconst nombre = String(parse.cancel_nombre || '').trim().toLowerCase();\n\nconst docs = extractDocuments(raw);\nconst candidates = docs\n  .map(d => ({\n    id: extractId(d),\n    customerPhone: normalizePhone(extractField(d, 'customerPhone') || extractField(d, 'phone')),\n    name: String(extractField(d, 'customerName') || '').trim().toLowerCase(),\n    estado: extractField(d, 'estado') || '',\n    date: extractField(d, 'date') || '',\n    tableId: extractField(d, 'tableId') || extractField(d, 'mesa_id') || '',\n    service: extractField(d, 'service') || '',\n    createdAt: extractField(d, 'createdAt') || '',\n  }))\n  .filter(r => ['pendiente', 'confirmada'].includes(r.estado))\n  .filter(r => (phone && r.customerPhone === phone) || (nombre && r.name.includes(nombre)));\n\ncandidates.sort((a, b) => (b.createdAt || '') > (a.createdAt || '') ? 1 : -1);\nconst found = candidates[0] || null;\n\nreturn [{\n  json: {\n    found: !!found,\n    pedido_id: found ? found.id : '',\n    mesa_res_id: found && found.tableId && found.date && found.service ? found.tableId + '_' + found.date + '_' + found.service : '',\n  }\n}];"
+      },
+      "id": "be26712e-4652-4310-bd39-86f07c46c3f1",
+      "name": "Buscar Pedido Cliente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error === undefined || $('Buscar Reserva Cliente').item.json.found === false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "name": "filter.operator.true"
+              },
+              "id": "cancel-no-error"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "03856a38-1757-48f0-84c6-42f43a6ca328",
+      "name": "¿Cancelado Pedido ok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2224,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/andimeet-93f62/databases/(default)/documents/pedidos/{{ $('Buscar Pedido Cliente').item.json.pedido_id }}?updateMask.fieldPaths=pedidoEstado",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fields: { pedidoEstado: { stringValue: 'cancelado' } } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "b7dbb349-81d8-4107-be55-4df5d75e9c0b",
+      "name": "Cancelar Pedido en Firestore",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2048,
+        48
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "kFgHEL7B3y3uwMYr",
+          "name": "Firebase Service Account Auto"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const found = $('Buscar Pedido Cliente').item.json.found;\nconst cancelName = $('Parse Cancelar Pedido').item.json.cancel_nombre || '';\nconst nameStr = cancelName ? `, ${cancelName.charAt(0).toUpperCase() + cancelName.slice(1)}` : '';\n\nif (found) {\n    const successMessages = [\n        `¡Listo${nameStr}! Ya cancelamos tu pedido. ¡Gracias por avisarnos con tiempo! 🙌`,\n        `Pedido cancelado exitosamente${nameStr}. ¡Esperamos que vuelvas a elegirnos pronto! ✨`,\n        `¡Perfecto${nameStr}! Acabo de dar de baja tu pedido. ¡Que tengas un excelente día! 🍷`\n    ];\n    return [{ json: { mensaje: successMessages[Math.floor(Math.random() * successMessages.length)] } }];\n} else {\n    const failMessages = [\n        `Revisé el sistema pero no encontré ningún pedido activo vinculado a tu número${nameStr}. ¿Puede ser que hayas pedido con otro teléfono? 🤔`,\n        `No me figura ningún pedido activo en este momento. Si lo hiciste con otro celular, pasámelo y lo verifico. 👇`,\n        `Me fijé en el sistema pero no hay pedidos activos asociados a este número. Si usaste otro teléfono, decime cuál es así lo busco. 🧐`\n    ];\n    return [{ json: { mensaje: failMessages[Math.floor(Math.random() * failMessages.length)] } }];\n}"
+      },
+      "id": "f12abb1d-9761-47a5-8c2a-6bd72d8110e1",
+      "name": "Build Cancel Pedido Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2384,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "andimeet",
+        "remoteJid": "={{ $('Webhook1').item.json.body.data.key.remoteJid }}",
+        "messageText": "={{ $('Build Cancel Pedido Message').item.json.mensaje }}",
+        "options_message": {
+          "delay": 1500
+        }
+      },
+      "id": "43810c70-0c1d-42df-b252-3c37ac5e06c4",
+      "name": "Send Cancel Pedido WhatsApp",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        2768,
+        48
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "evolutionApi": {
+          "id": "QA2TB3jQdXMkKDOZ",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "andimeet",
+        "remoteJid": "={{ $('Webhook1').item.json.body.data.key.remoteJid }}",
+        "messageText": "Lo sentimos, no pudimos cancelar tu reserva en este momento. Por favor intentá de nuevo en unos minutos.",
+        "options_message": {
+          "delay": 1500
+        }
+      },
+      "id": "94ade8c9-3fa1-44bd-8a45-7d9cee651523",
+      "name": "Send Cancel Pedido Error",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        144
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "QA2TB3jQdXMkKDOZ",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-1",
+              "leftValue": "={{ $('Buscar Reserva Cliente').item.json.mesa_res_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "name": "filter.operator.notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b321a654-e0b4-4b56-1111-fcae393fca1e",
+      "name": "¿Tiene Mesa?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2432,
+        -336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-n8n.u2ucpt.easypanel.host/webhook/whatsapp/notificar-confirmado",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-andi-secret",
+              "value": "andi-webhook-secret-2026"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ evento: 'recordatorio_programar', document_id: ($json.fields && $json.fields.id && $json.fields.id.stringValue) || '', tipo: 'reserva', remind_at: (() => { try { const f = $json.fields || {}; const d = f.date && f.date.stringValue; const t = f.time && f.time.stringValue; if (!d || !t) return ''; const ts = new Date(d + 'T' + t + ':00-03:00').getTime(); if (isNaN(ts)) return ''; return new Date(ts - 15 * 60000).toISOString(); } catch (e) { return ''; } })() }) }}",
+        "options": {}
+      },
+      "id": "schedule-reminder-node-123",
+      "name": "Schedule Reminder via NotiMan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3056,
+        -976
       ]
     }
   ],
-  "pinData": {},
   "connections": {
     "Webhook1": {
       "main": [
@@ -2273,6 +2561,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Parse Cancelar Pedido",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -2324,7 +2619,7 @@
       "main": [
         [
           {
-            "node": "Has Table?",
+            "node": "Schedule Reminder via NotiMan",
             "type": "main",
             "index": 0
           }
@@ -2670,7 +2965,7 @@
       "main": [
         [
           {
-            "node": "Liberar Mesa de Reserva",
+            "node": "¿Tiene Mesa?",
             "type": "main",
             "index": 0
           }
@@ -2694,20 +2989,113 @@
           }
         ]
       ]
+    },
+    "Parse Cancelar Pedido": {
+      "main": [
+        [
+          {
+            "node": "Get Pedidos Para Cancelar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pedidos Para Cancelar": {
+      "main": [
+        [
+          {
+            "node": "Buscar Pedido Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Pedido Cliente": {
+      "main": [
+        [
+          {
+            "node": "Cancelar Pedido en Firestore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancelar Pedido en Firestore": {
+      "main": [
+        [
+          {
+            "node": "¿Cancelado Pedido ok?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Cancelado Pedido ok?": {
+      "main": [
+        [
+          {
+            "node": "Build Cancel Pedido Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Cancel Pedido Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Tiene Mesa?": {
+      "main": [
+        [
+          {
+            "node": "Liberar Mesa de Reserva",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Cancel Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cancel Pedido Message": {
+      "main": [
+        [
+          {
+            "node": "Send Cancel Pedido WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Reminder via NotiMan": {
+      "main": [
+        [
+          {
+            "node": "Has Table?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
-  },
-  "versionId": "c33621be-a8a9-41d0-a958-899f524ec046",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "f97f52e2629a44e549822a08608d3090a447ae09f8015d4d4f61024c5aa4446c"
-  },
-  "nodeGroups": [],
-  "id": "ABz0WledZziOVMQY",
-  "tags": []
+  }
 }
